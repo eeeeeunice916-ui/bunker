@@ -45,6 +45,13 @@ body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:va
 .shbar{height:6px;margin-top:3px}
 .shbar i{background:#6fc3ff}
 .chip.pass{border-color:#ff8a3d;color:#ff8a3d}
+.codebox{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.codebox small{font-size:11px;letter-spacing:.2em;color:var(--muted);font-weight:600}
+.codebox b{font:400 44px/1 var(--display);letter-spacing:.18em;color:var(--amber);font-variant-numeric:tabular-nums}
+.joinrow input{flex:1 1 140px;min-width:0;min-height:48px;border-radius:10px;border:1px solid var(--line);background:#0f131c;color:var(--text);
+  font:20px/1 var(--display);letter-spacing:.15em;text-align:center;padding:0 12px}
+.joinrow input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.coopnote{font-size:12px;color:#ffcf7a;margin:0;line-height:1.5}
 .ammo b{color:var(--amber)}
 .center-stat{text-align:center;align-items:center}
 .iconbtn{pointer-events:auto;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:rgba(20,25,36,.75);color:var(--text);
@@ -236,7 +243,33 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
         <button class="btn" id="viewMenuBtn">시점: 1인칭</button>
         <button class="btn primary" id="startBtn">무기 고르기</button>
       </div>
+      <div class="row"><button class="btn" id="coopBtn">친구와 같이 하기</button></div>
       <p class="note" id="bestNote"></p>
+    </div>
+  </div>
+
+  <div class="overlay" id="coopMenu" hidden>
+    <div class="panel">
+      <div class="eyebrow">친구와 같이 하기 · 협동</div>
+      <h2>방 만들기 또는 참가</h2>
+      <p class="lead">한 명이 방을 만들고 방 코드를 알려 주면, 친구가 그 코드를 넣고 들어와요. 둘이 같은 맵에서 웨이브와 보스를 같이 막아요. 쓰러지면 친구가 옆에 와서 살려 줄 수 있어요.</p>
+      <div class="row"><button class="btn primary" id="hostBtn">방 만들기</button></div>
+      <div class="codebox" id="codeBox" hidden><small>방 코드</small><b id="roomCode">------</b><span class="note">친구에게 이 6자리 숫자를 알려 주세요</span></div>
+      <div class="row joinrow">
+        <input id="joinCode" inputmode="numeric" maxlength="6" placeholder="방 코드 6자리" autocomplete="off" aria-label="방 코드">
+        <button class="btn" id="joinBtn">참가하기</button>
+      </div>
+      <p class="note" id="coopStatus"></p>
+      <p class="coopnote">같이 하기는 GitHub 주소처럼 인터넷 주소로 게임을 열었을 때만 돼요. 연결이 안 되면 둘 다 와이파이에 연결하고 다시 해 보세요.</p>
+      <div class="row"><button class="btn" id="coopBack">돌아가기</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="waitMenu" hidden>
+    <div class="panel">
+      <div class="eyebrow">협동</div>
+      <h2 id="waitTitle">친구를 기다리는 중…</h2>
+      <p class="note" id="waitNote"></p>
     </div>
   </div>
 
@@ -680,8 +713,8 @@ function updatePassive(dt) {
   if (k === "fire" || k === "frost") {
     const r = auraR();
     for (const e of enemies) { if (e.dying > 0 || isAir(e) || Math.hypot(e.x - P.x, e.y - P.y) > r) continue;
-      if (k === "fire") { e.burnT = Math.max(e.burnT, .6); e.burnDps = Math.max(e.burnDps, 1.6 * pm); }
-      else { e.slowT = Math.max(e.slowT, .35); e.hp -= .45 * pm * dt; if (e.hp <= 0) kill(e); } }
+      if (k === "fire") applyFx(e, { burnT: .6, burnDps: 1.6 * pm });
+      else applyFx(e, { slowT: .35, dmg: .45 * pm * dt }); }
   } else if (k === "bolt") {
     PS.zapT -= dt;
     if (PS.zapT <= 0) {
@@ -736,13 +769,13 @@ function activateUlt() {
     for (let i = 0; i < 60; i++) { const c = freeCells[(Math.random() * freeCells.length) | 0]; ULT.flames.push([c[0] + Math.random(), c[1] + Math.random(), Math.random() * 6]); }
   } else if (k === "frost") {
     P.ultT = 7; shots = [];
-    for (const e of enemies) if (e.dying <= 0) e.frozenT = 7;
+    for (const e of enemies) if (e.dying <= 0) applyFx(e, { freeze: 7 });
   } else if (k === "bolt") {
     P.ultT = 3;
     for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; zaps.push({ kind: "spark", x: P.x + Math.cos(a) * 1.4, y: P.y + Math.sin(a) * 1.4, t: 0, life: .45 }); }
   } else if (k === "blades") {
     P.ultT = 1.2;
-    for (const e of enemies) if (e.dying <= 0) e.saw = { t: -Math.random() * .3 };
+    for (const e of enemies) if (e.dying <= 0) applyFx(e, { saw: 3 * pMult() * dmgMult() });
   } else if (k === "shield") {
     P.ultT = 5; P.hp = stat.maxHp(); PS.shield = shieldMax();
   } else if (k === "drone") {
@@ -753,17 +786,17 @@ function ultDronePos(i) { const a = PS.t * 1.6 + i * Math.PI / 4; return [P.x + 
 function updateUlt(dt) {
   const k = P.passive, pm = pMult() * dmgMult(), on = P.ultT > 0;
   // Blades keep falling on marked enemies until they die, even after the timer ends.
-  for (const e of enemies) if (e.saw && e.dying <= 0) {
+  if (!isGuest()) for (const e of enemies) if (e.saw && e.dying <= 0) {
     e.saw.t += dt;
     if (e.saw.t > 5.3) { e.saw = null; continue; }
-    if (e.saw.t > .3) { e.hp -= 3 * pm * dt; e.saw.hitT = (e.saw.hitT || 0) - dt;
+    if (e.saw.t > .3) { e.hp -= (e.saw.dps || 3 * pm) * dt; e.saw.hitT = (e.saw.hitT || 0) - dt;
       if (e.saw.hitT <= 0) { e.saw.hitT = .09; e.flash = .03; if (Math.random() < .35) sfx.stab(); }
       if (e.hp <= 0) kill(e); }
   }
-  if (!on) { P.eyeT = .5; return; }
+  if (!on) { P.eyeT = P.down ? .15 : .5; return; }
   P.ultT -= dt; ULT.tick -= dt;
   if (k === "fire") {
-    for (const e of enemies) { if (e.dying > 0) continue; e.burnT = Math.max(e.burnT, .2); e.hp -= 2 * pMult() * dt; if (e.hp <= 0) kill(e); }
+    for (const e of enemies) { if (e.dying > 0) continue; applyFx(e, { burnT: .2, burnDps: .01, dmg: 2 * pMult() * dt }); }
   } else if (k === "bolt" && ULT.tick <= 0) {
     ULT.tick = .2;
     const near = enemies.filter(e => e.dying <= 0 && Math.hypot(e.x - P.x, e.y - P.y) < 9);
@@ -947,7 +980,7 @@ function spawnWave() {
   const n = P.wave, used = new Set(), boss = n % 10 === 0, half = boss ? .5 : 1;
   const grunts = Math.round((2 + n) * half), spitters = Math.floor(n / 2 * half), flyers = Math.min(6, Math.floor((n - 1) / 2 * half));
   const add = (type, hp) => { const [i,j] = pickCell(9, 99, used);
-    enemies.push({ type, x: i+.5, y: j+.5, hp, maxHp: hp, cd: rnd(.5, 2), t: Math.random()*6, z: 1.35, orbit: Math.random()*6.28,
+    enemies.push({ id: NET.nextId++, type, x: i+.5, y: j+.5, hp, maxHp: hp, cd: rnd(.5, 2), t: Math.random()*6, z: 1.35, orbit: Math.random()*6.28,
       flash: 0, dying: 0, slowT: 0, burnT: 0, burnDps: 0, ringT: 3 }); };
   for (let k = 0; k < grunts; k++) add("grunt", 2 + Math.floor(n/2));
   for (let k = 0; k < spitters; k++) add("spitter", 3 + Math.floor(n/2));
@@ -963,16 +996,19 @@ function banner(text, sub) {
 }
 function reset() {
   L = {};
-  Object.assign(P, { hp: 100, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0,
+  Object.assign(P, { down: false, hp: 100, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0,
     quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0 });
   cur = "primary"; prevMain = "primary"; clearHitMarks(); zaps.length = 0;
-  clearT = -1; fireHeld = false; loadZone(0); refillAll(); passiveReset(); P.pitch = 0; P.ultNeed = 20; P.ult = 0; P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = []; spawnWave(); buildWbar();
+  clearT = -1; fireHeld = false; loadZone(0); refillAll(); passiveReset(); P.pitch = 0; P.ultNeed = 20; P.ult = 0; P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = [];
+  if (isGuest()) { P.wave = 1; const sx = P.x - Math.sin(P.a) * .9, sy = P.y + Math.cos(P.a) * .9; if (freeAt(sx, sy, .25)) { P.x = sx; P.y = sy; } }
+  else spawnWave();
+  buildWbar(); NET.rev.h = NET.rev.g = 0;
 }
 
 /* ---------- Combat ---------- */
 const hitMarks = [];
 function hurtPlayer(d, sx, sy) {
-  if (state !== "play" || (P.ultT > 0 && P.passive === "shield")) return;
+  if (state !== "play" || P.down || (P.ultT > 0 && P.passive === "shield")) return;
   if (P.passive === "shield") {
     PS.shieldIdle = 0; const absorb = Math.min(PS.shield, d); PS.shield -= absorb; d -= absorb;
     if (d <= 0) { P.hurtT = .15; tone(900,.08,"triangle",.06,500); }
@@ -983,23 +1019,20 @@ function hurtPlayer(d, sx, sy) {
     hitMarks.push({ el, x: sx, y: sy, t: 0, life: 1.3 });
     if (hitMarks.length > 6) hitMarks.shift().el.remove();
   }
-  if (P.hp <= 0) gameOver();
+  if (P.hp <= 0) playerDown();
 }
 function kill(e) {
   if (e.dying > 0) return;
-  e.dying = .35; P.kills++; P.score += EDEF[e.type].score; sfx.die();
+  e.dying = .35; P.score += EDEF[e.type].score; sfx.die();
   if (e.type === "boss") { banner("보스 처치!", `+${EDEF.boss.score}점`); for (const t of ["health","ammo","health","ammo"]) items.push({ type: t, x: e.x + rnd(-.4,.4), y: e.y + rnd(-.4,.4), t: 0 }); }
-  if (P.ultT <= 0) P.ult = Math.min(P.ultNeed, P.ult + 1);
-  if (L.leech) P.hp = Math.min(stat.maxHp(), P.hp + 4*L.leech);
-  if (L.scav) ammo.primary.res = Math.min(GUNS[P.gun].res * 3, ammo.primary.res + scavAmt()*L.scav);
+  if (e.lastBy === "g") netSend({ t: "kill" }); else onKillCredit();
   if (Math.random() < .3) items.push({ type: Math.random() < .6 ? "ammo" : "health", x: e.x, y: e.y, t: 0 });
 }
 function damage(e, d, status) {
-  if (e.dying > 0) return;
-  e.hp -= d; e.flash = .08;
-  if (status && L.ice) e.slowT = Math.max(e.slowT, 1.5 + .5*L.ice);
-  if (status && L.fire) { e.burnT = Math.max(e.burnT, 3); e.burnDps = Math.max(e.burnDps, .7*L.fire); }
-  if (e.hp <= 0) kill(e);
+  const o = { dmg: d };
+  if (status && L.ice) o.slowT = 1.5 + .5*L.ice;
+  if (status && L.fire) { o.burnT = 3; o.burnDps = .7*L.fire; }
+  applyFx(e, o);
 }
 function hitRay(ang, d) {
   // In third person the shot travels along the camera's centre line so it lands under the crosshair.
@@ -1066,25 +1099,25 @@ function throwIt(kind, quick) {
   if (counts[kind] <= 0) return false;
   counts[kind]--; P.throwT = .35; P.quickKind = quick ? kind : null; P.cd = .55; sfx.toss();
   const ca = Math.cos(P.a), sa = Math.sin(P.a), sp = kind === "grenade" ? 7 : 7.5;
-  throws.push({ kind, x: P.x + ca*.3, y: P.y + sa*.3, vx: ca*sp, vy: sa*sp, z: .45, vz: 2.3, fuse: 1.6, t: 0 });
+  if (isGuest()) netSend({ t: "throw", k: kind, x: r2(P.x + ca*.3), y: r2(P.y + sa*.3), vx: r2(ca*sp), vy: r2(sa*sp), bm: blastMult(), dm: dmgMult(), bl: L.blast || 0 });
+  else throws.push({ kind, x: P.x + ca*.3, y: P.y + sa*.3, vx: ca*sp, vy: sa*sp, z: .45, vz: 2.3, fuse: 1.6, t: 0 });
   return true;
 }
-function explode(x, y) {
-  const r = 2.4 * blastMult(), base = 9 * blastMult() * dmgMult();
+function explode(x, y, o = {}) {
+  const bm = o.bm || blastMult(), r = 2.4 * bm, base = 9 * bm * (o.dm || dmgMult()), src = o.src || "h";
   for (const e of enemies) { if (e.dying > 0) continue;
     const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy, isAir(e) ? eLift(e) : 0);
     if (d > r || (!isAir(e) && !los(x, y, e.x, e.y))) continue;
-    damage(e, base * (1 - d/r*.6), false);
+    applyFx(e, { dmg: base * (1 - d/r*.6), src });
     if (d > .01) moveEnt(e, e.x + dx/d*.5, e.y + dy/d*.5, .24);
   }
   fx.push({ x, y, t: 0, life: .5 });
   const pd = Math.hypot(P.x - x, P.y - y);
   P.shakeT = pd < 7 ? .35 : .15; sfx.boom();
 }
-function shatter(x, y) {
-  const r = 1.5 * blastMult(), pts = [];
-  for (let i = 0; i < 9; i++) { const a = Math.random()*Math.PI*2, d = Math.sqrt(Math.random()) * r * .85; pts.push([Math.cos(a)*d, Math.sin(a)*d, Math.random()*6]); }
-  fires.push({ x, y, r, t: 0, life: 5 * (1 + .2 * (L.blast || 0)), pts });
+function shatter(x, y, o = {}) {
+  const bm = o.bm || blastMult(), r = 1.5 * bm, bl = o.src === "g" ? (o.bl || 0) : (L.blast || 0);
+  fires.push({ x, y, r, t: 0, life: 5 * (1 + .2 * bl), pts: firePts(x, y, r), dps: 2.4 * (o.dm || dmgMult()) * bm });
   sfx.glass();
 }
 function useWeapon() {
@@ -1115,17 +1148,18 @@ function quickThrow(kind) {
 
 /* Flying bats circle above the player, over the walls, and drop acid from above. */
 function updateFlyer(e, dt, slow) {
+  const T = pickTarget(e);
   e.orbit += dt * .3;
-  const tx = P.x + Math.cos(e.orbit) * 1.7, ty = P.y + Math.sin(e.orbit) * 1.7;
+  const tx = T.x + Math.cos(e.orbit) * 1.7, ty = T.y + Math.sin(e.orbit) * 1.7;
   const mx = tx - e.x, my = ty - e.y, md = Math.hypot(mx, my), sp = Math.min(md * 1.2, 1.0) * slow;
   if (md > .01) { e.x += mx/md*sp*dt; e.y += my/md*sp*dt; }
   e.x = Math.max(1.2, Math.min(N - 1.2, e.x)); e.y = Math.max(1.2, Math.min(N - 1.2, e.y));
   e.z = 1.4 + Math.sin(e.t * 1.5) * .08;
   for (const o of enemies) { if (o === e || !isAir(o) || o.dying > 0) continue; const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy);
     if (od > 0 && od < .6) { e.x += ox/od*.6*dt; e.y += oy/od*.6*dt; } }
-  if (Math.hypot(P.x - e.x, P.y - e.y) < 3.5 && e.cd <= 0) {
-    const T = 1.3;
-    shots.push({ x: e.x, y: e.y, z: e.z, vx: (P.x - e.x)/T, vy: (P.y - e.y)/T, vz: (.45 - e.z)/T, life: T + .4, acid: true });
+  if (Math.hypot(T.x - e.x, T.y - e.y) < 3.5 && e.cd <= 0) {
+    const fT = 1.3;
+    shots.push({ x: e.x, y: e.y, z: e.z, vx: (T.x - e.x)/fT, vy: (T.y - e.y)/fT, vz: (.45 - e.z)/fT, life: fT + .4, acid: true });
     e.cd = 2.6 - Math.min(P.wave * .05, .8); sfx.spit();
   }
 }
@@ -1140,6 +1174,7 @@ function update(dt) {
   if (keys.ArrowRight || keys.KeyE) turn += 1;
   if (keys.ArrowLeft || keys.KeyQ) turn -= 1;
   if (joy.id !== null) { fwd += -joy.y; str += joy.x; }
+  if (P.down || NET.paused) fwd = str = turn = 0;
   const mag = Math.hypot(fwd, str); if (mag > 1) { fwd /= mag; str /= mag; }
   P.a += turn * 2.6 * dt;
   const ca = Math.cos(P.a), sa = Math.sin(P.a), sp = stat.speed() * dt;
@@ -1154,10 +1189,17 @@ function update(dt) {
     if (P.reloadT <= 0) { P.reloadT = 0; const a = ammo[cur], take = Math.min(magSize(gunDef(cur)) - a.mag, a.res); a.mag += take; a.res -= take; sfx.reloaded(); } }
   if (P.autoBackT > 0) { P.autoBackT -= dt; if (P.autoBackT <= 0) switchTo(prevMain); }
   if (keys.KeyR) startReload();
-  const firing = fireHeld || keys.Space;
+  const firing = (fireHeld || keys.Space) && !P.down && !NET.paused;
   if (!firing) P.latch = false; else useWeapon();
 
-  buildFlow();
+  if (isGuest()) {
+    updatePassive(dt); updateUlt(dt);
+    P.eye += (P.eyeT - P.eye) * Math.min(1, dt * 4);
+    for (const e of enemies) { e.t += dt; e.flash -= dt; if (e.bladeCd > 0) e.bladeCd -= dt; }
+    netTick(dt);
+    return;
+  }
+  buildFlow(); if (NET.on) buildFlow2();
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i]; e.t += dt; e.flash -= dt;
     if (e.dying > 0) { e.dying -= dt; if (e.dying <= 0) enemies.splice(i, 1); continue; }
@@ -1165,17 +1207,18 @@ function update(dt) {
     if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burnDps * dt; if (e.hp <= 0) { kill(e); continue; } } else e.burnDps = 0;
     if (e.frozenT > 0) { e.frozenT -= dt; continue; }
     if (e.type === "flyer") { updateFlyer(e, dt, slow); continue; }
-    const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy), see = los(e.x, e.y, P.x, P.y);
+    const T = pickTarget(e), fl = T === P ? flow : flow2;
+    const dx = T.x - e.x, dy = T.y - e.y, d = Math.hypot(dx, dy) || .01, see = los(e.x, e.y, T.x, T.y);
     let mx = 0, my = 0;
     if (see) { mx = dx/d; my = dy/d; }
-    else { const ci = e.x|0, cj = e.y|0; let bv = flow[cj*N+ci], bx = -1, by = -1;
-      for (const [ox,oy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const f = flow[(cj+oy)*N + ci+ox]; if (f >= 0 && (bv < 0 || f < bv)) { bv = f; bx = ci+ox; by = cj+oy; } }
+    else { const ci = e.x|0, cj = e.y|0; let bv = fl[cj*N+ci], bx = -1, by = -1;
+      for (const [ox,oy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const f = fl[(cj+oy)*N + ci+ox]; if (f >= 0 && (bv < 0 || f < bv)) { bv = f; bx = ci+ox; by = cj+oy; } }
       if (bx >= 0) { const tx = bx+.5 - e.x, ty = by+.5 - e.y, tl = Math.hypot(tx,ty) || 1; mx = tx/tl; my = ty/tl; } }
     let speed = 0;
     if (e.type === "boss") {
       const rage = e.hp < e.maxHp / 2;
       speed = rage ? 1.55 : 1.1;
-      if (d < 1.15) { speed = 0; if (e.cd <= 0) { hurtPlayer(18 + Math.floor(P.wave / 2), e.x, e.y); e.cd = 1.2; P.shakeT = .25; } }
+      if (d < 1.15) { speed = 0; if (e.cd <= 0) { hurtTarget(T, 18 + Math.floor(P.wave / 2), e.x, e.y); e.cd = 1.2; if (T === P) P.shakeT = .25; } }
       e.ringT -= dt * slow;
       if (e.ringT <= 0) {
         const cnt = rage ? 16 : 12, off = Math.random() * 6.28;
@@ -1185,7 +1228,7 @@ function update(dt) {
       }
     } else if (e.type === "grunt") {
       speed = Math.min(1.5 + P.wave*.12, 3);
-      if (d < .75) { speed = 0; if (e.cd <= 0) { hurtPlayer(8 + Math.min(P.wave, 10), e.x, e.y); e.cd = .9; } }
+      if (d < .75) { speed = 0; if (e.cd <= 0) { hurtTarget(T, 8 + Math.min(P.wave, 10), e.x, e.y); e.cd = .9; } }
     } else {
       speed = 1.3;
       if (see && d < 3.2) { mx = -mx; my = -my; speed = 1.1; }
@@ -1204,7 +1247,9 @@ function update(dt) {
   P.eye += (P.eyeT - P.eye) * Math.min(1, dt * 4);
   for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.x += s.vx*dt; s.y += s.vy*dt; s.z += (s.vz || 0)*dt; s.life -= dt;
     if (s.life <= 0 || s.z <= 0 || (s.z < 1 && wallAt(s.x, s.y))) { shots.splice(i, 1); continue; }
-    if (s.z < 1.05 && Math.hypot(s.x - P.x, s.y - P.y) < (s.acid ? .45 : .35)) { shots.splice(i, 1); hurtPlayer((s.acid ? 9 : 10) + Math.min(P.wave, 8), s.x - s.vx, s.y - s.vy); } }
+    if (s.z < 1.05) { const rr = s.acid ? .45 : .35, dmg = (s.acid ? 9 : 10) + Math.min(P.wave, 8), o = NET.on ? NET.other : null;
+      if (!P.down && Math.hypot(s.x - P.x, s.y - P.y) < rr) { shots.splice(i, 1); hurtPlayer(dmg, s.x - s.vx, s.y - s.vy); }
+      else if (o && !o.down && Math.hypot(s.x - o.x, s.y - o.y) < rr) { shots.splice(i, 1); netSend({ t: "hurt", d: dmg, sx: r2(s.x - s.vx), sy: r2(s.y - s.vy) }); } } }
   // grenades + molotovs in flight
   for (let i = throws.length - 1; i >= 0; i--) {
     const t = throws[i]; t.t += dt;
@@ -1214,29 +1259,32 @@ function update(dt) {
     t.x = nx; t.y = ny; t.vz -= 9*dt; t.z += t.vz*dt;
     if (t.kind === "molotov") {
       const hitE = enemies.some(e => e.dying <= 0 && !isAir(e) && Math.hypot(e.x - t.x, e.y - t.y) < .4);
-      if (hitWall || hitE || t.z <= .02) { shatter(t.x, t.y); throws.splice(i, 1); }
+      if (hitWall || hitE || t.z <= .02) { shatter(t.x, t.y, t); throws.splice(i, 1); }
       continue;
     }
     if (t.z <= .06) { t.z = .06; if (t.vz < 0) { t.vz = -t.vz*.35; t.vx *= .55; t.vy *= .55; if (Math.abs(t.vz) < .4) t.vz = 0; } }
-    t.fuse -= dt; if (t.fuse <= 0) { explode(t.x, t.y); throws.splice(i, 1); }
+    t.fuse -= dt; if (t.fuse <= 0) { explode(t.x, t.y, t); throws.splice(i, 1); }
   }
   // burning ground
   for (let i = fires.length - 1; i >= 0; i--) {
     const f = fires[i]; f.t += dt;
     if (f.t >= f.life) { fires.splice(i, 1); continue; }
     for (const e of enemies) { if (e.dying > 0 || isAir(e)) continue;
-      if (Math.hypot(e.x - f.x, e.y - f.y) < f.r) { e.burnT = Math.max(e.burnT, 1.2); e.burnDps = Math.max(e.burnDps, 2.4 * dmgMult() * blastMult()); } }
+      if (Math.hypot(e.x - f.x, e.y - f.y) < f.r) { e.burnT = Math.max(e.burnT, 1.2); e.burnDps = Math.max(e.burnDps, f.dps || 2.4); } }
   }
   for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt; if (fx[i].t >= fx[i].life) fx.splice(i, 1); }
   // pickups
   for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; it.t += dt;
-    if (Math.hypot(it.x - P.x, it.y - P.y) < .6) {
+    if (!P.down && Math.hypot(it.x - P.x, it.y - P.y) < .6) {
       if (it.type === "health") { if (P.hp >= stat.maxHp()) continue; P.hp = Math.min(stat.maxHp(), P.hp + 30); }
       else { const d = GUNS[P.gun]; ammo.primary.res = Math.min(d.res*3, ammo.primary.res + Math.max(2, Math.round(d.res*.25))); }
-      items.splice(i, 1); sfx.pick(); } }
+      items.splice(i, 1); sfx.pick(); continue; }
+    const o = NET.on ? NET.other : null;
+    if (o && !o.down && Math.hypot(it.x - o.x, it.y - o.y) < .6 && !(it.type === "health" && o.full)) { items.splice(i, 1); netSend({ t: "grant", k: it.type }); } }
+  netTick(dt);
   if (state === "play" && enemies.length === 0) {
     if (clearT < 0) { clearT = 1.5; banner(`웨이브 ${P.wave} 클리어`); }
-    else { clearT -= dt; if (clearT <= 0) { clearT = -1; openPerks(); } }
+    else { clearT -= dt; if (clearT <= 0) { clearT = -1; NET.myPerk = NET.otherPerk = false; netSend({ t: "perk", w: P.wave }); openPerks(); } }
   }
 }
 
@@ -1282,7 +1330,13 @@ function openPassiveSelect() {
   });
   show("passMenu");
 }
-function pickPassive(id) { if (state !== "passsel") return; P.passive = id; startGame(); }
+function pickPassive(id) {
+  if (state !== "passsel") return; P.passive = id;
+  if (!NET.on) { startGame(); return; }
+  NET.ready = true; netSend({ t: "ready" });
+  if (isHost() && NET.otherReady) hostStart();
+  else waitScreen("친구가 무기를 고르는 중…", isHost() ? "친구가 다 고르면 게임이 시작돼요." : "방장이 다 고르면 게임이 시작돼요.");
+}
 
 let offer = [];
 function openPerks() {
@@ -1304,7 +1358,16 @@ function choosePerk(i) {
   if (state !== "perk" || !offer[i]) return;
   const p = offer[i]; L[p.id] = (L[p.id] || 0) + 1; sfx.perk();
   if (p.id === "hp") P.hp = stat.maxHp();
-  loadZone(P.wave); spawnWave(); refillAll(); PS.shield = shieldMax(); zaps.length = 0;
+  if (isGuest()) { netSend({ t: "perkDone" }); waitScreen("친구가 특성을 고르는 중…", "친구가 고르면 바로 다음 구간으로 넘어가요."); return; }
+  if (isHost()) { NET.myPerk = true; if (!NET.otherPerk) { waitScreen("친구가 특성을 고르는 중…", "친구가 고르면 바로 다음 구간으로 넘어가요."); return; } }
+  beginNextWave();
+}
+function beginNextWave(zi) {
+  if (isGuest()) { loadZone(zi); const sx = P.x - Math.sin(P.a) * .9, sy = P.y + Math.cos(P.a) * .9; if (freeAt(sx, sy, .25)) { P.x = sx; P.y = sy; } }
+  else { const z = P.wave; loadZone(z); spawnWave(); if (isHost()) netSend({ t: "wave", zi: z, w: P.wave }); }
+  if (P.down) { P.down = false; P.hp = Math.round(stat.maxHp() * .5); }
+  NET.myPerk = NET.otherPerk = false; NET.rev.h = NET.rev.g = 0;
+  refillAll(); PS.shield = shieldMax(); zaps.length = 0;
   P.swapT = 0; P.autoBackT = 0; if (isThrow(cur)) cur = prevMain;
   P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = [];
   state = "play"; show(null); lock(); updateWbar(true);
@@ -1403,12 +1466,18 @@ function render() {
   }
   for (const b of fx) { const p = b.t / b.life, sc = (.5 + 2.2*Math.sin(Math.min(1, p*1.6) * Math.PI/2)) * (1 - p*.6);
     list.push({ x: b.x, y: b.y, tex: SPR.boom, sc, lift: .35 - sc/2 }); }
-  if (state !== "menu" && state !== "select" && state !== "passsel") { passiveSprites(list); ultSprites(list); }
+  if (state === "play" || state === "pause" || state === "perk" || state === "over" || state === "wait") { passiveSprites(list); ultSprites(list); }
   if (tp) {
     const kind = cur === "primary" ? P.gun : cur, moving = state === "play" && Math.abs(Math.sin(P.bob)) > .01;
     const key = kind + (moving && Math.sin(P.bob) > 0 ? 1 : 0) + (P.hurtT > .25 ? "H" : "");
     list.push({ x: P.x, y: P.y, tex: SPR.me[key], sc: .62, lift: (P.knifeT > 0 ? .02 : 0) + (P.eye - .5) });
     if (P.flash > 0 && isGun(cur)) list.push({ x: P.x + dirX*.55 - dirY*.12, y: P.y + dirY*.55 + dirX*.12, tex: SPR.fireball, sc: .22, lift: .38 });
+  }
+  const mate = NET.on && NET.other && (state === "play" || state === "pause" || state === "over") ? NET.other : null;
+  if (mate) {
+    const k = KINDS[mate.k] || "rifle", fr = mate.mv && Math.sin(performance.now() / 110) > 0 ? 1 : 0;
+    list.push({ x: mate.x, y: mate.y, tex: SPR.me[k + fr + (mate.down ? "H" : "")], sc: mate.down ? .4 : .62, lift: mate.down ? 0 : Math.max(0, (mate.eye || .5) - .5) });
+    if (mate.f && !mate.down) list.push({ x: mate.x + Math.cos(mate.a) * .5, y: mate.y + Math.sin(mate.a) * .5, tex: SPR.fireball, sc: .2, lift: .38 });
   }
   const inv = 1 / (plX*dirY - dirX*plY);
   for (const s of list) { const sx = s.x - ox, sy = s.y - oy; s.tx = inv*(dirY*sx - dirX*sy); s.ty = inv*(-plY*sx + plX*sy); }
@@ -1431,6 +1500,14 @@ function render() {
       const f = 1 - l.t / l.life;
       ctx.strokeStyle = `rgba(90,255,170,${.45*f})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       ctx.strokeStyle = `rgba(230,255,240,${f})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+  }
+  if (mate) {
+    const sx = mate.x - ox, sy = mate.y - oy, tx = inv*(dirY*sx - dirX*sy), ty = inv*(-plY*sx + plX*sy);
+    if (ty > .2) { const unit = proj/ty, px = (W/2)*(1 + tx/ty), py = hz + unit*P.eye - (mate.down ? .5 : .8)*unit, col = px | 0;
+      if (col >= 0 && col < W && ty < zBuf[col] + .5) {
+        ctx.font = "11px 'Do Hyeon', sans-serif"; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,.7)";
+        const label = mate.down ? "친구 · 쓰러짐" : "친구"; ctx.strokeText(label, px, py); ctx.fillStyle = mate.down ? "#ff6b78" : "#7be0a6"; ctx.fillText(label, px, py);
+      } }
   }
   if (!tp) drawWeapon();
 }
@@ -1588,7 +1665,9 @@ function hud() {
   const sm = shieldMax(); $("shBar").hidden = !sm; if (sm) $("shFill").style.width = (PS.shield / sm * 100) + "%";
   let st = "";
   if (state === "play") {
-    if (P.noteT > 0) st = P.note;
+    const cs = coopStatusText();
+    if (cs && (P.down || (NET.other && NET.other.down))) st = cs;
+    else if (P.noteT > 0) st = P.note;
     else if (P.ultT > 0 && P.passive !== "blades") st = `각성 · ${PASSIVES[P.passive].ult} ${Math.ceil(P.ultT)}초` + (P.passive === "shield" ? " · 비행 중 무적" : "");
     else if (P.reloadT > 0) st = "장전 중…";
     else if (isGun(cur)) {
@@ -1614,19 +1693,252 @@ function hud() {
   const shake = P.shakeT > 0 && state === "play" ? `translate(${rnd(-5,5)|0}px,${rnd(-5,5)|0}px)` : "";
   if (cvs.style.transform !== shake) cvs.style.transform = shake;
   wbar.hidden = state !== "play" && state !== "pause";
+  syncPauseButtons();
   updateWbar(false);
 }
 
+/* ---------- Co-op (PeerJS, host runs the world) ---------- */
+const NET = { on: false, role: null, peer: null, conn: null, code: "", other: null, ready: false, otherReady: false,
+  myPerk: false, otherPerk: false, q: {}, qT: 0, sendT: 0, rev: { h: 0, g: 0 }, paused: false, nextId: 1, fxN: 0 };
+const isGuest = () => NET.on && NET.role === "guest";
+const isHost = () => NET.on && NET.role === "host";
+const KINDS = ["rifle", "shotgun", "sniper", "smg", "pistol", "knife", "grenade", "molotov"];
+const TYPES = ["grunt", "spitter", "flyer", "boss"];
+const r2 = v => Math.round(v * 100) / 100;
+function netSend(m) { try { if (NET.conn && NET.conn.open) NET.conn.send(m); } catch (e) {} }
+let peerLib = null;
+function loadPeer() {
+  if (window.Peer) return Promise.resolve();
+  if (peerLib) return peerLib;
+  peerLib = new Promise((res, rej) => {
+    const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js";
+    sc.onload = res; sc.onerror = () => { peerLib = null; rej(new Error("load")); }; document.head.appendChild(sc);
+  });
+  return peerLib;
+}
+function peerOpts() {
+  let q = null; try { q = new URLSearchParams(location.search).get("peer"); } catch (e) {}
+  if (q) { const [host, port] = q.split(":"); return { host, port: +port || 9000, path: "/", secure: false }; }
+  return {};
+}
+function coopStatus(t) { $("coopStatus").textContent = t; }
+function openCoop() { initAudio(); state = "lobby"; $("codeBox").hidden = true; coopStatus(""); show("coopMenu"); }
+function closePeer() {
+  try { NET.conn && NET.conn.close(); } catch (e) {}
+  try { NET.peer && NET.peer.destroy(); } catch (e) {}
+  Object.assign(NET, { on: false, role: null, peer: null, conn: null, other: null, ready: false, otherReady: false, myPerk: false, otherPerk: false, q: {}, paused: false });
+}
+async function hostRoom() {
+  closePeer(); coopStatus("방을 만드는 중…");
+  try { await loadPeer(); } catch (e) { coopStatus("연결 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요."); return; }
+  const code = String(100000 + Math.floor(Math.random() * 900000));
+  let peer; try { peer = new Peer("bunkerdol-" + code, peerOpts()); } catch (e) { coopStatus("이 화면에서는 같이 하기를 쓸 수 없어요. GitHub 주소로 열어 주세요."); return; }
+  NET.peer = peer; NET.code = code;
+  peer.on("open", () => { $("roomCode").textContent = code; $("codeBox").hidden = false; coopStatus("친구가 들어오기를 기다리는 중…"); });
+  peer.on("connection", conn => { if (NET.conn) { conn.close(); return; } setupConn(conn, "host"); });
+  peer.on("error", err => {
+    if (err && err.type === "unavailable-id") { hostRoom(); return; }
+    coopStatus("방을 만들지 못했어요. 잠시 뒤 다시 해 주세요. (" + (err && err.type || "오류") + ")");
+  });
+}
+async function joinRoom() {
+  const code = $("joinCode").value.replace(/\D/g, "");
+  if (code.length !== 6) { coopStatus("방 코드 6자리 숫자를 넣어 주세요."); return; }
+  closePeer(); coopStatus("방에 들어가는 중…");
+  try { await loadPeer(); } catch (e) { coopStatus("연결 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요."); return; }
+  let peer; try { peer = new Peer(undefined, peerOpts()); } catch (e) { coopStatus("이 화면에서는 같이 하기를 쓸 수 없어요. GitHub 주소로 열어 주세요."); return; }
+  NET.peer = peer;
+  peer.on("open", () => setupConn(peer.connect("bunkerdol-" + code, { serialization: "json", reliable: true }), "guest"));
+  peer.on("error", err => {
+    if (err && err.type === "peer-unavailable") coopStatus("그 방을 찾을 수 없어요. 방 코드를 다시 확인해 주세요.");
+    else coopStatus("연결하지 못했어요. 잠시 뒤 다시 해 주세요. (" + (err && err.type || "오류") + ")");
+  });
+}
+function setupConn(conn, role) {
+  conn.on("open", () => {
+    NET.conn = conn; NET.on = true; NET.role = role; NET.other = null;
+    coopStatus(role === "host" ? "친구가 들어왔어요!" : "방에 들어왔어요!");
+    sfx.perk(); setTimeout(() => { if (NET.on) openGunSelect(); }, 700);
+  });
+  conn.on("data", onNet);
+  conn.on("close", onDisconnect);
+  conn.on("error", () => {});
+}
+function onDisconnect() {
+  if (!NET.on) return;
+  const wasGuest = isGuest(), waitingPerk = state === "wait" && NET.myPerk;
+  closePeer();
+  if (state === "play" && !wasGuest) { if (P.down) { gameOver(); return; } banner("친구와 연결이 끊겼어요", "혼자 계속해요"); return; }
+  if (waitingPerk && !wasGuest) { beginNextWave(); banner("친구와 연결이 끊겼어요", "혼자 계속해요"); return; }
+  unlock(); state = "menu"; reset(); show("menu"); $("bestNote").textContent = "친구와 연결이 끊겼어요.";
+}
+function leaveRoom() { closePeer(); unlock(); state = "menu"; reset(); show("menu"); showBest(); }
+function waitScreen(title, sub) { state = "wait"; unlock(); $("waitTitle").textContent = title; $("waitNote").textContent = sub || ""; show("waitMenu"); }
+function hostStart() { NET.ready = NET.otherReady = false; startGame(); netSend({ t: "start" }); }
+function myKind() { return KINDS.indexOf(cur === "primary" ? P.gun : cur); }
+
+/* Guest damage, slows, burns, freezes and saws are batched and sent to the host, which owns enemy health. */
+function applyFx(e, o) {
+  if (e.dying > 0) return;
+  if (isGuest()) {
+    const q = NET.q[e.id] || (NET.q[e.id] = {});
+    q.dmg = (q.dmg || 0) + (o.dmg || 0);
+    for (const k of ["slowT", "burnT", "burnDps", "freeze", "saw"]) if (o[k]) q[k] = Math.max(q[k] || 0, o[k]);
+    if (o.dmg > .05) e.flash = .08;
+    return;
+  }
+  if (o.slowT) e.slowT = Math.max(e.slowT, o.slowT);
+  if (o.burnT) { e.burnT = Math.max(e.burnT, o.burnT); e.burnDps = Math.max(e.burnDps, o.burnDps || 0); }
+  if (o.freeze) e.frozenT = Math.max(e.frozenT || 0, o.freeze);
+  if (o.saw && !e.saw) e.saw = { t: -Math.random() * .3, dps: o.saw };
+  if (o.dmg) { e.hp -= o.dmg; e.lastBy = o.src || "h"; if (o.dmg > .05) e.flash = .08; if (e.hp <= 0) kill(e); }
+}
+function pickTarget(e) {
+  const o = NET.on ? NET.other : null;
+  if (!o || o.down) return P;
+  if (P.down) return o;
+  return Math.hypot(o.x - e.x, o.y - e.y) < Math.hypot(P.x - e.x, P.y - e.y) ? o : P;
+}
+function hurtTarget(T, d, sx, sy) { if (T === P) hurtPlayer(d, sx, sy); else netSend({ t: "hurt", d, sx: r2(sx), sy: r2(sy) }); }
+const flow2 = new Int16Array(N*N); let flowCell2 = -1;
+function buildFlow2() {
+  const o = NET.other; if (!o) return;
+  const start = (o.y|0)*N + (o.x|0); if (start === flowCell2 || start < 0 || start >= N*N) return; flowCell2 = start;
+  flow2.fill(-1); flow2[start] = 0; const q = [start];
+  for (let h = 0; h < q.length; h++) { const c = q[h], cx = c % N, cy = (c / N) | 0;
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nx = cx+dx, ny = cy+dy, n = ny*N+nx;
+      if (nx<0||ny<0||nx>=N||ny>=N||MAP[n]||flow2[n]>=0) continue; flow2[n] = flow2[c]+1; q.push(n); } }
+}
+function playerDown() {
+  if (!NET.on) { gameOver(); return; }
+  if (P.down) return;
+  P.down = true; P.hp = 0; fireHeld = false; P.reloadT = 0;
+  note("쓰러졌어요! 친구가 옆에 오면 살려 줄 수 있어요"); P.noteT = 4;
+  if (isHost() && NET.other && NET.other.down) coopOver();
+}
+function reviveSelf() { P.down = false; P.hp = Math.round(stat.maxHp() * .5); P.eyeT = .5; note("친구가 살려 줬어요!"); sfx.perk(); }
+function coopOver() { netSend({ t: "over", sc: P.score, w: P.wave }); gameOver(); }
+
+function sendSnapshot() {
+  const flags = e => (e.frozenT > 0 ? 1 : 0) | (e.burnT > 0 ? 2 : 0) | (e.slowT > 0 ? 4 : 0) | (e.flash > 0 ? 8 : 0);
+  netSend({ t: "s", w: P.wave, sc: P.score, rv: [r2(NET.rev.h), r2(NET.rev.g)],
+    p: [r2(P.x), r2(P.y), r2(P.a), myKind(), P.flash > 0 ? 1 : 0, P.down ? 1 : 0, r2(P.eye)],
+    e: enemies.map(e => [e.id, TYPES.indexOf(e.type), r2(e.x), r2(e.y), r2(e.z || 0), r2(e.hp), e.maxHp, flags(e), e.dying > 0 ? 1 : 0, e.saw ? r2(e.saw.t) : -9]),
+    s: shots.map(o => [r2(o.x), r2(o.y), r2(o.z), o.acid ? 1 : 0]),
+    it: items.map(o => [o.type === "health" ? 0 : 1, r2(o.x), r2(o.y)]),
+    th: throws.map(o => [o.kind === "grenade" ? 0 : 1, r2(o.x), r2(o.y), r2(o.z)]),
+    fi: fires.map(o => [r2(o.x), r2(o.y), r2(o.r), r2(o.t), r2(o.life)]),
+    fx: fx.map(o => [r2(o.x), r2(o.y), r2(o.t), o.life]) });
+}
+function firePts(x, y, r) {
+  let seed = Math.floor(x * 1000 + y * 37) >>> 0; const rr = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const pts = []; for (let i = 0; i < 9; i++) { const a = rr()*Math.PI*2, d = Math.sqrt(rr()) * r * .85; pts.push([Math.cos(a)*d, Math.sin(a)*d, rr()*6]); }
+  return pts;
+}
+function applySnapshot(m) {
+  P.wave = m.w; P.score = m.sc; NET.rev.h = m.rv[0]; NET.rev.g = m.rv[1];
+  const [x, y, a, k, f, down, eye] = m.p, o = NET.other || (NET.other = { x, y });
+  o.mv = Math.hypot(x - o.x, y - o.y) > .01; Object.assign(o, { x, y, a, k, f, down: !!down, eye });
+  const byId = new Map(enemies.map(e => [e.id, e])), next = [];
+  for (const [id, ti, ex, ey, ez, hp, maxHp, fl, dying, saw] of m.e) {
+    let e = byId.get(id);
+    if (!e) e = { id, type: TYPES[ti], x: ex, y: ey, t: Math.random() * 6, flash: 0, dying: 0, slowT: 0, burnT: 0, burnDps: 0 };
+    e.tx = ex; e.ty = ey; e.z = ez; e.hp = hp; e.maxHp = maxHp;
+    e.frozenT = fl & 1 ? 1 : 0; e.burnT = fl & 2 ? 1 : 0; e.slowT = fl & 4 ? 1 : 0; if (fl & 8) e.flash = Math.max(e.flash, .05);
+    if (dying && e.dying <= 0) e.dying = .35;
+    e.saw = saw > -9 ? { t: saw } : null;
+    next.push(e);
+  }
+  enemies = next;
+  shots = m.s.map(([sx, sy, sz, acid]) => ({ x: sx, y: sy, z: sz, acid: !!acid }));
+  items = m.it.map(([ty, ix, iy]) => ({ type: ty ? "ammo" : "health", x: ix, y: iy, t: 0 }));
+  throws = m.th.map(([kk, tx, ty, tz]) => ({ kind: kk ? "molotov" : "grenade", x: tx, y: ty, z: tz }));
+  fires = m.fi.map(([fx0, fy0, r, t, life]) => ({ x: fx0, y: fy0, r, t, life, pts: firePts(fx0, fy0, r) }));
+  if (m.fx.length > NET.fxN) sfx.boom();
+  NET.fxN = m.fx.length;
+  fx = m.fx.map(([bx, by, t, life]) => ({ x: bx, y: by, t, life }));
+}
+function onNet(m) {
+  if (!m || !m.t) return;
+  switch (m.t) {
+    case "ready": NET.otherReady = true; if (isHost() && NET.ready) hostStart(); break;
+    case "start": if (isGuest()) { NET.ready = false; startGame(); } break;
+    case "s": if (isGuest()) applySnapshot(m); break;
+    case "i": {
+      const o = NET.other || (NET.other = { x: m.x, y: m.y });
+      o.mv = Math.hypot(m.x - o.x, m.y - o.y) > .01;
+      Object.assign(o, { x: m.x, y: m.y, a: m.a, k: m.k, f: m.f, down: !!m.down, full: !!m.full, eye: m.eye });
+      break; }
+    case "fx": if (isHost()) for (const [id, dmg, slowT, burnT, burnDps, freeze, saw] of m.l) {
+      const e = enemies.find(q => q.id === id); if (e) applyFx(e, { dmg, slowT, burnT, burnDps, freeze, saw, src: "g" }); } break;
+    case "throw": if (isHost()) throws.push({ kind: m.k, x: m.x, y: m.y, vx: m.vx, vy: m.vy, z: .45, vz: 2.3, fuse: 1.6, t: 0, src: "g", bm: m.bm, dm: m.dm, bl: m.bl }); break;
+    case "hurt": if (state === "play") hurtPlayer(m.d, m.sx, m.sy); break;
+    case "kill": onKillCredit(); break;
+    case "grant": if (m.k === "health") P.hp = Math.min(stat.maxHp(), P.hp + 30);
+      else { const d = GUNS[P.gun]; ammo.primary.res = Math.min(d.res*3, ammo.primary.res + Math.max(2, Math.round(d.res*.25))); }
+      sfx.pick(); break;
+    case "revive": if (P.down) reviveSelf(); break;
+    case "perk": if (isGuest() && state === "play") { P.wave = m.w; openPerks(); } break;
+    case "perkDone": NET.otherPerk = true; if (isHost() && NET.myPerk) beginNextWave(); break;
+    case "wave": if (isGuest()) { P.wave = m.w; beginNextWave(m.zi); } break;
+    case "over": if (isGuest()) { P.score = m.sc; P.wave = m.w; gameOver(); } break;
+  }
+}
+function onKillCredit() {
+  P.kills++;
+  if (P.ultT <= 0) P.ult = Math.min(P.ultNeed, P.ult + 1);
+  if (L.leech) P.hp = Math.min(stat.maxHp(), P.hp + 4*L.leech);
+  if (L.scav) ammo.primary.res = Math.min(GUNS[P.gun].res * 3, ammo.primary.res + scavAmt()*L.scav);
+}
+/* Called every frame while playing together: sends state, lerps the host's world on the guest, and handles revives. */
+function netTick(dt) {
+  if (!NET.on) return;
+  NET.sendT -= dt; NET.qT -= dt;
+  if (isGuest()) {
+    for (const e of enemies) { if (e.tx === undefined) continue; const k = Math.min(1, dt * 12); e.x += (e.tx - e.x) * k; e.y += (e.ty - e.y) * k;
+      if (e.dying > 0) e.dying = Math.max(.02, e.dying - dt); }
+    if (NET.sendT <= 0) { NET.sendT = .05;
+      netSend({ t: "i", x: r2(P.x), y: r2(P.y), a: r2(P.a), k: myKind(), f: P.flash > 0 ? 1 : 0, down: P.down ? 1 : 0, full: P.hp >= stat.maxHp() ? 1 : 0, eye: r2(P.eye) }); }
+    if (NET.qT <= 0) { NET.qT = .1; const ids = Object.keys(NET.q);
+      if (ids.length) { netSend({ t: "fx", l: ids.map(id => { const q = NET.q[id]; return [+id, r2(q.dmg || 0), q.slowT || 0, q.burnT || 0, r2(q.burnDps || 0), q.freeze || 0, r2(q.saw || 0)]; }) }); NET.q = {}; } }
+    return;
+  }
+  const o = NET.other;
+  if (o) {
+    const near = Math.hypot(o.x - P.x, o.y - P.y) < 1.3;
+    if (P.down && !o.down && near) { NET.rev.h += dt; if (NET.rev.h >= 2.5) { NET.rev.h = 0; reviveSelf(); } } else NET.rev.h = 0;
+    if (o.down && !P.down && near) { NET.rev.g += dt; if (NET.rev.g >= 2.5) { NET.rev.g = 0; o.down = false; netSend({ t: "revive" }); } } else NET.rev.g = 0;
+    if (P.down && o.down && state === "play") { coopOver(); return; }
+  }
+  if (NET.sendT <= 0) { NET.sendT = .05; sendSnapshot(); }
+}
+function coopStatusText() {
+  const o = NET.other; if (!NET.on || !o) return "";
+  const hostSide = isHost(), meRev = hostSide ? NET.rev.h : NET.rev.g, otherRev = hostSide ? NET.rev.g : NET.rev.h;
+  if (P.down) return meRev > 0 ? `친구가 살리는 중 ${Math.min(100, Math.round(meRev / 2.5 * 100))}%` : "쓰러짐 · 친구가 옆에 오면 살아나요";
+  if (o.down) return otherRev > 0 ? `친구를 살리는 중 ${Math.min(100, Math.round(otherRev / 2.5 * 100))}%` : "친구가 쓰러졌어요! 옆에 가서 살려 주세요";
+  return "";
+}
+
 /* ---------- Flow control ---------- */
-function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu","passMenu"].forEach(m => $(m).hidden = m !== id); }
+function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu","passMenu","coopMenu","waitMenu"].forEach(m => $(m).hidden = m !== id); }
 function startGame() { initAudio(); reset(); state = "play"; show(null); banner(Z.name, `${GUNS[P.gun].name} · ${PASSIVES[P.passive].name} · 웨이브 1`); sfx.wave(); lock(); }
 function pause() {
-  if (state !== "play") return; state = "pause"; fireHeld = false; joy.id = look.id = null; $("joyBase").style.display = "none";
+  if (state !== "play" || NET.paused) return;
+  if (NET.on) {
+    NET.paused = true; fireHeld = false; joy.id = look.id = null; $("joyBase").style.display = "none";
+    $("pauseZone").textContent = `메뉴 · 같이 하는 중이라 게임은 멈추지 않아요`; ownedChips($("ownedList")); show("pauseMenu"); unlock(); return;
+  }
+  state = "pause"; fireHeld = false; joy.id = look.id = null; $("joyBase").style.display = "none";
   $("pauseZone").textContent = `일시정지 · ${Z.name} · 웨이브 ${P.wave}`; ownedChips($("ownedList")); show("pauseMenu"); unlock();
 }
-function resume() { if (state !== "pause") return; initAudio(); state = "play"; show(null); lock(); }
+function syncPauseButtons() { setText("restartBtn", NET.on ? "방 나가기" : "처음부터"); }
+function resume() {
+  if (NET.paused) { NET.paused = false; show(null); lock(); return; }
+  if (state !== "pause") return; initAudio(); state = "play"; show(null); lock();
+}
 function gameOver() {
-  state = "over"; fireHeld = false; unlock();
+  state = "over"; fireHeld = false; unlock(); NET.paused = false;
   const newBest = P.score > best; if (newBest) { best = P.score; try { localStorage.setItem("bunker-best", String(best)); } catch (e) {} }
   $("overTitle").textContent = `${Z.name}에서 쓰러졌습니다`;
   $("rScore").textContent = P.score.toLocaleString(); $("rWave").textContent = P.wave; $("rKills").textContent = P.kills;
@@ -1638,11 +1950,16 @@ function lock() { if (isTouch) return; try { const p = cvs.requestPointerLock &&
 function unlock() { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} }
 document.addEventListener("pointerlockchange", () => { const l = document.pointerLockElement === cvs; if (!l && wasLocked && state === "play") pause(); wasLocked = l; });
 
-$("startBtn").onclick = openGunSelect;
-$("againBtn").onclick = openGunSelect;
-$("restartBtn").onclick = openGunSelect;
+$("startBtn").onclick = () => { if (NET.on) closePeer(); openGunSelect(); };
+$("againBtn").onclick = () => { NET.ready = false; openGunSelect(); };
+$("restartBtn").onclick = () => { if (NET.on) leaveRoom(); else openGunSelect(); };
+$("coopBtn").onclick = openCoop;
+$("coopBack").onclick = () => { closePeer(); state = "menu"; show("menu"); };
+$("hostBtn").onclick = hostRoom;
+$("joinBtn").onclick = joinRoom;
+$("joinCode").addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") joinRoom(); });
 $("resumeBtn").onclick = resume;
-$("pauseBtn").onclick = () => state === "play" ? pause() : resume();
+$("pauseBtn").onclick = () => state === "play" && !NET.paused ? pause() : resume();
 $("viewHud").onclick = () => setView(!tp);
 $("viewMenuBtn").onclick = () => setView(!tp);
 $("viewPauseBtn").onclick = () => setView(!tp);
@@ -1657,7 +1974,7 @@ addEventListener("keydown", e => {
   if (state === "select" && num >= 1 && num <= 4) { pickGun(PRIMARY_IDS[num - 1]); return; }
   if (state === "passsel" && e.code.startsWith("Digit")) { const n = +e.code.slice(5); if (n >= 1 && n <= PASSIVE_IDS.length) pickPassive(PASSIVE_IDS[n - 1]); return; }
   if (state === "perk" && num >= 1 && num <= 3) { choosePerk(num - 1); return; }
-  if (e.code === "Escape" || e.code === "KeyP") { state === "play" ? pause() : resume(); return; }
+  if (e.code === "Escape" || e.code === "KeyP") { state === "play" && !NET.paused ? pause() : resume(); return; }
   if (state === "play") {
     if (num) { switchTo(SLOTS[num - 1]); return; }
     if (e.code === "KeyG") { quickThrow("grenade"); return; }
