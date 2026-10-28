@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>벙커 돌파</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,6 +42,9 @@ body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:va
 .hpbar{width:120px;height:10px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);border-radius:2px;overflow:hidden;margin-top:4px}
 .hpbar i{display:block;height:100%;width:100%;background:var(--hp);transition:width .15s}
 .hp b{color:var(--hp)}
+.shbar{height:6px;margin-top:3px}
+.shbar i{background:#6fc3ff}
+.chip.pass{border-color:#ff8a3d;color:#ff8a3d}
 .ammo b{color:var(--amber)}
 .center-stat{text-align:center;align-items:center}
 .iconbtn{pointer-events:auto;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:rgba(20,25,36,.75);color:var(--text);
@@ -52,6 +60,15 @@ body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:va
 #status{position:absolute;left:0;right:0;top:calc(50% + 24px);padding:0 16px;text-align:center;font:16px/1.2 var(--display);color:#fff;
   text-shadow:0 2px 0 rgba(0,0,0,.7);pointer-events:none}
 
+#hitLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hitmark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(46vmin,280px);height:min(46vmin,280px);transform-origin:50% 50%;
+  border-radius:50%;border:7px solid transparent;border-top-color:rgba(255,52,68,.95);filter:drop-shadow(0 0 6px rgba(255,40,60,.8))}
+.hitmark::after{content:"";position:absolute;left:50%;top:-22px;margin-left:-9px;border:9px solid transparent;border-bottom:12px solid rgba(255,52,68,.95);border-top:0}
+.viewbtn{width:auto;padding:0 10px;font-size:16px}
+#bossBar{position:absolute;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(70vw,420px);
+  pointer-events:none;text-align:center;font:16px/1 var(--display);color:#ffcf3a;text-shadow:0 2px 0 rgba(0,0,0,.7)}
+#bossBar .bb{height:10px;margin-top:5px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.3);border-radius:2px;overflow:hidden}
+#bossBar .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff3d6e,#ff9b2e)}
 #vignette{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(255,40,60,.75) 100%)}
 #banner{position:absolute;left:0;right:0;top:26%;padding:0 16px;text-align:center;font-family:var(--display);font-size:clamp(30px,7vw,58px);color:var(--amber);
   letter-spacing:.04em;text-shadow:0 3px 0 rgba(0,0,0,.75);pointer-events:none;opacity:0;transition:opacity .35s;text-wrap:balance}
@@ -83,6 +100,19 @@ body.touch .desk-only{display:none}
 #reloadBtn{position:absolute;right:calc(max(22px,env(safe-area-inset-right,0px)) + 104px);bottom:calc(30px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:50%;
   border:2px solid rgba(255,255,255,.35);background:rgba(20,25,36,.7);color:#fff;font:16px/1 var(--display)}
 #reloadBtn.down{background:rgba(255,178,30,.7)}
+#ultTint{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s}
+#ultBtn{position:absolute;right:max(30px,env(safe-area-inset-right,0px));bottom:calc(126px + env(safe-area-inset-bottom,0px));width:70px;height:70px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);padding:5px;cursor:pointer;color:#fff;font:15px/1 var(--display);
+  background:conic-gradient(var(--uc,#ffb21e) calc(var(--up,0) * 1%), rgba(20,25,36,.78) 0)}
+#ultBtn span{display:grid;place-items:center;align-content:center;width:100%;height:100%;border-radius:50%;background:rgba(20,25,36,.88);line-height:1.1}
+#ultBtn b{font-weight:400}
+#ultBtn small{display:block;font:600 10px/1 var(--body);color:#c9d0de;margin-top:2px}
+#ultBtn.ready{border-color:#fff;box-shadow:0 0 18px var(--uc,#ffb21e);animation:ultPulse 1s ease-in-out infinite}
+#ultBtn.ready span{background:var(--uc,#ffb21e);color:#14100a}
+#ultBtn.ready small{color:#14100a}
+@keyframes ultPulse{50%{transform:scale(1.07)}}
+body.touch.portrait #ultBtn{bottom:calc(186px + env(safe-area-inset-bottom,0px))}
+body:not(.touch) #ultBtn{bottom:calc(16px + env(safe-area-inset-bottom,0px));right:max(20px,env(safe-area-inset-right,0px))}
 
 /* Overlays */
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:auto;
@@ -138,19 +168,24 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
   .perk{padding:10px;gap:6px} .perk p{font-size:12px} .glyph{width:32px;height:32px;font-size:17px}
   .wb{height:42px}
 }
-@media (prefers-reduced-motion:reduce){#banner{transition:none}}
+@media (prefers-reduced-motion:reduce){#banner{transition:none} #ultBtn.ready{animation:none}}
 </style>
+</head>
+<body>
 
 <div id="game">
   <canvas id="view" aria-label="게임 화면"></canvas>
   <div id="vignette"></div>
+  <div id="ultTint"></div>
+  <div id="hitLayer"></div>
   <div class="cross" id="cross"></div>
   <div id="status"></div>
   <div id="banner"></div>
+  <div id="bossBar" hidden><span id="bossName">보스 · 괴물 군주</span><div class="bb"><i id="bossFill"></i></div></div>
 
   <div class="hud">
     <div class="hud-group">
-      <div class="stat hp"><small>체력</small><b id="hpNum">100</b><div class="hpbar"><i id="hpFill"></i></div></div>
+      <div class="stat hp"><small>체력</small><b id="hpNum">100</b><div class="hpbar"><i id="hpFill"></i></div><div class="hpbar shbar" id="shBar" hidden><i id="shFill"></i></div></div>
       <div class="stat ammo"><small id="ammoLabel">연사총</small><b><span id="magNum">30</span> <em id="resNum">/ 120</em></b></div>
     </div>
     <div class="hud-group">
@@ -159,11 +194,13 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
     </div>
     <div class="hud-group">
       <div class="stat" style="text-align:right;align-items:flex-end"><small>점수</small><b id="scoreNum">0</b></div>
+      <button class="iconbtn viewbtn" id="viewHud" aria-label="시점 바꾸기">1인칭</button>
       <button class="iconbtn" id="pauseBtn" aria-label="일시정지">II</button>
     </div>
   </div>
 
   <div id="wbar" hidden></div>
+  <button id="ultBtn" hidden aria-label="각성"><span><b>각성</b><small id="ultPct">0/20</small></span></button>
 
   <div class="touch-only" id="touchUI" hidden>
     <div id="joyBase"><div id="joyKnob"></div></div>
@@ -176,23 +213,29 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
     <div class="panel">
       <div class="eyebrow">1인칭 슈팅 · 웨이브 서바이벌</div>
       <h1>벙커 돌파</h1>
-      <p class="lead">주무기를 고르고 권총, 칼, 수류탄, 화염병과 함께 출발합니다. 웨이브를 막을 때마다 특성을 골라 강해지고, 벙커부터 연구소까지 다섯 구간을 돌며 끝까지 버텨 보세요.</p>
+      <p class="lead">주무기와 패시브 능력을 고르고 권총, 칼, 수류탄, 화염병과 함께 출발합니다. 웨이브를 막을 때마다 특성을 골라 강해지고, 벙커부터 연구소까지 다섯 구간을 돌며 끝까지 버텨 보세요.</p>
       <dl class="controls desk-only">
         <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>이동 (방향키로 회전)</dd>
-        <dt><kbd>마우스</kbd></dt><dd>시점 회전 · 클릭하면 공격</dd>
+        <dt><kbd>마우스</kbd></dt><dd>시점 회전 (위아래도 볼 수 있어요) · 클릭하면 공격</dd>
         <dt><kbd>1</kbd>~<kbd>5</kbd></dt><dd>무기 바꾸기 (마우스 휠도 돼요)</dd>
         <dt><kbd>G</kbd><kbd>F</kbd></dt><dd>수류탄 · 화염병 바로 던지기</dd>
         <dt><kbd>R</kbd></dt><dd>장전</dd>
+        <dt><kbd>X</kbd></dt><dd>각성 (게이지가 가득 차면)</dd>
+        <dt><kbd>V</kbd></dt><dd>1인칭 · 3인칭 바꾸기</dd>
         <dt><kbd>Esc</kbd></dt><dd>일시정지</dd>
       </dl>
       <dl class="controls touch-only">
         <dt><kbd>왼쪽</kbd></dt><dd>화면 왼쪽을 끌어서 이동</dd>
-        <dt><kbd>오른쪽</kbd></dt><dd>화면 오른쪽을 끌어서 시점 회전</dd>
+        <dt><kbd>오른쪽</kbd></dt><dd>화면 오른쪽을 끌어서 시점 회전 (위아래로 끌면 위아래를 봐요)</dd>
         <dt><kbd>무기</kbd></dt><dd>아래 무기 버튼을 눌러 바꾸기</dd>
         <dt><kbd>발사</kbd></dt><dd>누르고 있으면 연사, 옆 버튼으로 장전</dd>
+        <dt><kbd>각성</kbd></dt><dd>게이지가 가득 차면 눌러서 발동</dd>
       </dl>
       <p class="note touch-only">휴대폰은 가로로 돌려서 하면 훨씬 편해요.</p>
-      <div class="row"><button class="btn primary" id="startBtn">무기 고르기</button></div>
+      <div class="row">
+        <button class="btn" id="viewMenuBtn">시점: 1인칭</button>
+        <button class="btn primary" id="startBtn">무기 고르기</button>
+      </div>
       <p class="note" id="bestNote"></p>
     </div>
   </div>
@@ -203,6 +246,15 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
       <h2>주무기를 고르세요</h2>
       <div class="perks" id="gunList"></div>
       <p class="note">어떤 총을 골라도 권총, 칼, 수류탄 3개, 화염병 2개가 함께 들어 있어요. 탄약과 투척 무기는 웨이브마다 다시 채워져요.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="passMenu" hidden>
+    <div class="panel wide">
+      <div class="eyebrow" id="passEyebrow">패시브 선택</div>
+      <h2>패시브 능력을 고르세요</h2>
+      <div class="perks" id="passList"></div>
+      <p class="note">패시브는 저절로 발동해요. 적을 1마리 쓰러뜨릴 때마다 각성 게이지가 1씩 차고, 20마리를 채우면 각성 버튼(컴퓨터는 X키)으로 패시브마다 다른 필살기를 쓸 수 있어요. 각성할 때마다 다음 각성에 필요한 처치 수가 5씩 늘어나요.</p>
     </div>
   </div>
 
@@ -224,7 +276,10 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
         <button class="btn primary" id="resumeBtn">계속하기</button>
         <button class="btn" id="restartBtn">처음부터</button>
       </div>
-      <div class="row"><button class="btn" id="soundBtn">소리: 켜짐</button></div>
+      <div class="row">
+        <button class="btn" id="viewPauseBtn">시점: 1인칭</button>
+        <button class="btn" id="soundBtn">소리: 켜짐</button>
+      </div>
     </div>
   </div>
 
@@ -380,12 +435,108 @@ SPR.ammo = canvas64(g => {
   g.fillStyle = "#66773f"; g.fillRect(12,34,40,24);
   g.fillStyle = "#ffb21e"; g.fillRect(18,42,28,4);
 });
-for (const k of ["grunt","spitter"]) {
+SPR.flyer = canvas64(g => {
+  g.fillStyle = "#3b2a52";
+  poly(g, [[30,30],[4,14],[8,26],[2,34],[12,36],[10,44],[26,38]]);
+  poly(g, [[34,30],[60,14],[56,26],[62,34],[52,36],[54,44],[38,38]]);
+  g.fillStyle = "#5a4078"; poly(g, [[30,31],[12,22],[24,36]]); poly(g, [[34,31],[52,22],[40,36]]);
+  const rg = g.createRadialGradient(30,28,2,32,32,12); rg.addColorStop(0,"#6e5a8c"); rg.addColorStop(1,"#2a1c3c");
+  g.fillStyle = rg; ell(g, 32, 32, 11, 12);
+  g.fillStyle = "#d8ff6a"; ell(g, 32, 32, 6, 6); g.fillStyle = "#1a2208"; ell(g, 32, 32, 2, 4);
+  g.fillStyle = "#e8d9b5"; poly(g, [[27,41],[29,47],[31,42]]); poly(g, [[33,42],[35,47],[37,41]]);
+});
+SPR.acid = canvas64(g => {
+  const rg = g.createRadialGradient(28,28,1,32,32,26); rg.addColorStop(0,"#f4ffc2"); rg.addColorStop(.35,"#a6e83a"); rg.addColorStop(1,"rgba(80,140,20,0)");
+  g.fillStyle = rg; ell(g, 32, 32, 26, 26);
+});
+SPR.boss = canvas64(g => {
+  g.fillStyle = "#2a0d14"; g.fillRect(18,50,10,14); g.fillRect(36,50,10,14);
+  g.fillStyle = "#4a1420"; ell(g, 9, 38, 7, 13); ell(g, 55, 38, 7, 13);
+  g.fillStyle = "#e8d9b5"; for (const x of [4,9,14]) poly(g, [[x,48],[x+2,55],[x+4,48]]); for (const x of [46,51,56]) poly(g, [[x,48],[x+2,55],[x+4,48]]);
+  const rg = g.createRadialGradient(28,26,4,32,34,26); rg.addColorStop(0,"#9c2a3e"); rg.addColorStop(1,"#3d0e18");
+  g.fillStyle = rg; ell(g, 32, 34, 22, 21);
+  g.fillStyle = "#d9b44a"; poly(g, [[14,20],[2,2],[10,4],[20,16]]); poly(g, [[50,20],[62,2],[54,4],[44,16]]);
+  g.fillStyle = "#ffcf3a"; poly(g, [[22,16],[24,6],[28,12],[32,4],[36,12],[40,6],[42,16]]);
+  g.fillStyle = "#ff5a2a"; ell(g, 24, 28, 4, 3); ell(g, 40, 28, 4, 3); ell(g, 32, 22, 3, 2.5);
+  g.fillStyle = "#fff2b0"; ell(g, 24, 28, 1.5, 1.5); ell(g, 40, 28, 1.5, 1.5); ell(g, 32, 22, 1, 1);
+  g.fillStyle = "#14060a"; g.fillRect(20, 38, 24, 8);
+  g.fillStyle = "#fff4dc"; for (let i = 0; i < 6; i++) poly(g, [[21+i*4,38],[24+i*4,38],[22.5+i*4,42]]);
+});
+for (const k of ["grunt","spitter","flyer","boss"]) {
   SPR[k+"F"] = tint(SPR[k], "rgba(255,255,255,.9)");
   SPR[k+"Ice"] = tint(SPR[k], "rgba(140,215,255,.55)");
   SPR[k+"Fire"] = tint(SPR[k], "rgba(255,130,30,.5)");
   SPR[k+"Both"] = tint(SPR[k+"Ice"], "rgba(255,130,30,.3)");
 }
+
+/* Player seen from behind (third person): one sprite per held item and walk frame, plus a red hurt flash. */
+function soldier(kind, frame) {
+  return canvas64(g => {
+    const st = frame ? 3 : -3;
+    g.fillStyle = "#2b3138"; g.fillRect(24, 46, 7, 14 + st); g.fillRect(33, 46, 7, 14 - st);
+    g.fillStyle = "#15181d"; g.fillRect(23, 59 + st, 9, 4); g.fillRect(32, 59 - st, 9, 4);
+    g.fillStyle = "#3e5c48"; g.fillRect(16, 27, 6, 17); g.fillRect(42, 27, 6, 17);
+    g.fillStyle = "#4a6b55"; g.fillRect(20, 25, 24, 23);
+    g.fillStyle = "#2b3a30"; g.fillRect(20, 44, 24, 4);
+    g.fillStyle = "#5e4c33"; g.fillRect(24, 27, 16, 15); g.fillStyle = "#4a3b27"; g.fillRect(24, 34, 16, 2);
+    g.fillStyle = "#2b3a30"; g.fillRect(25, 25, 3, 18); g.fillRect(36, 25, 3, 18);
+    g.fillStyle = "#c99a76"; g.fillRect(29, 20, 6, 6);
+    g.fillStyle = "#4b5a3c"; ell(g, 32, 15, 9, 8); g.fillStyle = "#3b4830"; g.fillRect(23, 17, 18, 3);
+    g.fillStyle = "#2a2f38"; ell(g, 47, 44, 3.5, 3.5);
+    const C = { rifle: "#2f3644", smg: "#262b35", shotgun: "#6b4024", sniper: "#4d5a3a", pistol: "#3a4150" };
+    if (C[kind]) {
+      const len = kind === "sniper" ? 30 : kind === "pistol" ? 10 : kind === "smg" ? 16 : 22;
+      g.fillStyle = C[kind]; g.fillRect(45, 44 - len, 5, len);
+      g.fillStyle = "#14171d"; g.fillRect(46, 42 - len, 3, 4);
+      if (kind === "sniper") { g.fillStyle = "#16191f"; g.fillRect(44, 24, 7, 8); g.fillStyle = "#6fc3ff"; g.fillRect(45, 23, 5, 2); }
+      if (kind === "rifle") { g.fillStyle = "#ffb21e"; g.fillRect(45, 34, 5, 2); }
+    } else if (kind === "knife") {
+      g.fillStyle = "#17191e"; g.fillRect(46, 36, 3, 7); g.fillStyle = "#dfe5ec"; poly(g, [[45,36],[50,36],[48,24]]);
+    } else if (kind === "grenade") {
+      g.fillStyle = "#4f6b3a"; ell(g, 48, 38, 4, 5);
+    } else if (kind === "molotov") {
+      g.fillStyle = "#3d6b4a"; g.fillRect(45, 32, 6, 11); g.fillRect(47, 28, 2, 4); g.drawImage(SPR.flame, 43, 18, 10, 11);
+    }
+  });
+}
+SPR.me = {};
+for (const k of ["rifle","shotgun","sniper","smg","pistol","knife","grenade","molotov"]) for (const f of [0, 1]) {
+  SPR.me[k + f] = soldier(k, f); SPR.me[k + f + "H"] = tint(SPR.me[k + f], "rgba(255,60,70,.55)");
+}
+
+/* Passive ability sprites */
+SPR.frost = canvas64(g => {
+  g.strokeStyle = "rgba(200,240,255,.95)"; g.lineWidth = 3; g.lineCap = "round";
+  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3, x = 32 + Math.cos(a)*16, y = 44 + Math.sin(a)*16;
+    g.beginPath(); g.moveTo(32, 44); g.lineTo(x, y); g.stroke();
+    g.beginPath(); g.moveTo(32 + Math.cos(a)*10, 44 + Math.sin(a)*10); g.lineTo(32 + Math.cos(a+.5)*14, 44 + Math.sin(a+.5)*14); g.stroke(); }
+  const rg = g.createRadialGradient(32,44,1,32,44,12); rg.addColorStop(0,"rgba(255,255,255,.9)"); rg.addColorStop(1,"rgba(140,215,255,0)");
+  g.fillStyle = rg; ell(g, 32, 44, 12, 12);
+});
+SPR.bolt = canvas64(g => {
+  const pts = [[36,0],[26,18],[36,22],[22,40],[32,43],[24,64]];
+  g.lineJoin = "round";
+  for (const [w, c] of [[9,"rgba(120,180,255,.45)"],[4,"#d6ecff"],[1.5,"#ffffff"]]) {
+    g.strokeStyle = c; g.lineWidth = w; g.beginPath(); pts.forEach(([x,y],i) => i ? g.lineTo(x,y) : g.moveTo(x,y)); g.stroke(); }
+});
+SPR.spark = canvas64(g => {
+  const rg = g.createRadialGradient(32,32,1,32,32,28); rg.addColorStop(0,"#ffffff"); rg.addColorStop(.3,"#9fe8ff"); rg.addColorStop(1,"rgba(80,160,255,0)");
+  g.fillStyle = rg; ell(g, 32, 32, 28, 28);
+});
+SPR.blade = canvas64(g => {
+  g.fillStyle = "#c9d1db";
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; poly(g, [[32 + Math.cos(a)*10, 32 + Math.sin(a)*10], [32 + Math.cos(a+.3)*26, 32 + Math.sin(a+.3)*26], [32 + Math.cos(a+.65)*12, 32 + Math.sin(a+.65)*12]]); }
+  g.fillStyle = "#eef2f6"; ell(g, 32, 32, 13, 13);
+  g.fillStyle = "#ff4f5e"; ell(g, 32, 32, 5, 5);
+});
+SPR.drone = canvas64(g => {
+  g.fillStyle = "#2a2f38"; g.fillRect(8, 26, 48, 4);
+  g.fillStyle = "rgba(200,210,225,.6)"; ell(g, 10, 24, 9, 2.5); ell(g, 54, 24, 9, 2.5);
+  g.fillStyle = "#3a4252"; ell(g, 32, 36, 14, 10);
+  g.fillStyle = "#56607a"; ell(g, 28, 32, 6, 4);
+  g.fillStyle = "#14171d"; ell(g, 32, 40, 6, 5);
+  g.fillStyle = "#7be0a6"; ell(g, 32, 40, 3, 3);
+});
 
 /* ---------- Zones ---------- */
 const N = 24, MAP = new Uint8Array(N * N);
@@ -431,11 +582,11 @@ function los(ax, ay, bx, by) {
   for (let k = 1; k < steps; k++) { const t = k / steps; if (wallAt(ax + dx * t, ay + dy * t)) return false; }
   return true;
 }
-function castRay(rdx, rdy) {
-  let mx = P.x|0, my = P.y|0; const ddx = Math.abs(1/rdx), ddy = Math.abs(1/rdy);
+function castRay(ox, oy, rdx, rdy) {
+  let mx = ox|0, my = oy|0; const ddx = Math.abs(1/rdx), ddy = Math.abs(1/rdy);
   let sx, sy, sdx, sdy, side = 0;
-  if (rdx < 0) { sx = -1; sdx = (P.x - mx)*ddx; } else { sx = 1; sdx = (mx + 1 - P.x)*ddx; }
-  if (rdy < 0) { sy = -1; sdy = (P.y - my)*ddy; } else { sy = 1; sdy = (my + 1 - P.y)*ddy; }
+  if (rdx < 0) { sx = -1; sdx = (ox - mx)*ddx; } else { sx = 1; sdx = (mx + 1 - ox)*ddx; }
+  if (rdy < 0) { sy = -1; sdy = (oy - my)*ddy; } else { sy = 1; sdy = (my + 1 - oy)*ddy; }
   for (let k = 0; k < 64; k++) {
     if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
     if (mx < 0 || my < 0 || mx >= N || my >= N || MAP[my*N+mx]) break;
@@ -482,7 +633,183 @@ const PERKS = [
   { id: "bag",    name: "폭탄 가방", g: "가", c: "#b7c36a", max: 3, d: l => `웨이브마다 수류탄 ${3+l}개, 화염병 ${2+l}개를 받습니다.` },
   { id: "blast",  name: "폭발 전문가", g: "폭", c: "#ff9b4a", max: 3, d: l => `수류탄과 화염병의 범위 +25%, 피해 +25%` },
   { id: "blade",  name: "칼 숙련",   g: "칼", c: "#dfe5ec", max: 3, d: l => `칼 피해 +60%, 칼 휘두르는 속도 +20%` },
+  { id: "passive", name: "패시브 강화", g: "패", c: "#ff9b4a", max: 4, d: l => `${PASSIVES[P.passive].name}: ${PASSIVES[P.passive].up}` },
 ];
+
+/* ---------- Passive abilities ---------- */
+const PASSIVES = {
+  fire:   { name: "불장판",    g: "불", c: "#ff7a3d", desc: "내 주위 바닥에 불길이 깔려서 가까이 온 적이 계속 불타요.", ult: "지옥불", ultDesc: "맵 전체에 불을 질러 6초 동안 모든 적에게 초당 2 피해", up: "불길 피해 +35%, 범위 +10%" },
+  frost:  { name: "냉기 오라", g: "빙", c: "#8fd8ff", desc: "내 주위가 얼어붙어서 가까이 온 적이 느려지고 조금씩 피해를 입어요.", ult: "절대 영도", ultDesc: "맵에 있는 모든 적을 7초 동안 꽁꽁 얼려요", up: "냉기 피해 +35%, 범위 +10%" },
+  bolt:   { name: "번개",      g: "번", c: "#c9b8ff", desc: "몇 초마다 가까운 적에게 번개가 떨어지고 옆의 적에게 튀어요.", ult: "천둥 폭풍", ultDesc: "3초 동안 사방으로 전기를 뿜어 주변 적을 지져요", up: "번개 피해 +35%, 더 자주, 1명 더 튐" },
+  blades: { name: "회전 칼날", g: "칼", c: "#dfe5ec", desc: "칼날 2개가 내 주위를 빙빙 돌면서 닿는 적을 베요.", ult: "칼날 비", ultDesc: "모든 적 머리 위로 칼날이 떨어져 5초 동안 빠르게 베요", up: "칼날 +1개, 피해 +35%" },
+  shield: { name: "보호막",    g: "막", c: "#6fc3ff", desc: "피해를 먼저 막아 주는 보호막이 생겨요. 3초 동안 안 맞으면 다시 차올라요.", ult: "수호천사", ultDesc: "체력을 모두 회복하고 5초 동안 하늘을 날며 무적이 돼요", up: "보호막 +35%" },
+  drone:  { name: "지원 드론", g: "드", c: "#7be0a6", desc: "작은 드론이 따라다니며 보이는 적을 자동으로 쏴요.", ult: "드론 군단", ultDesc: "내 주위 360도에 드론 8대가 돌면서 8초 동안 레이저를 번갈아 쏴요", up: "드론 피해 +35%, 연사 +20%" },
+};
+const PASSIVE_IDS = Object.keys(PASSIVES);
+const EDEF = {
+  grunt:   { sc: .78, hw: .3,  score: 100 },
+  spitter: { sc: .6,  hw: .26, score: 200 },
+  flyer:   { sc: .68, hw: .6,  score: 250, pad: .3 },
+  boss:    { sc: 1.35, hw: .55, score: 3000 },
+};
+function eLift(e) {
+  if (e.type === "grunt") return Math.abs(Math.sin(e.t*8))*.03;
+  if (e.type === "spitter") return .28 + Math.sin(e.t*3)*.06;
+  if (e.type === "flyer") return (e.z || 1.35) - .25;
+  return Math.abs(Math.sin(e.t*4))*.04;
+}
+const isAir = e => e.type === "flyer";
+const PS = { t: 0, zapT: 1.5, droneT: .5, shield: 0, shieldIdle: 0 };
+const pLv = () => L.passive || 0;
+const pMult = () => 1 + .35 * pLv();
+const shieldMax = () => P.passive === "shield" ? 30 * pMult() : 0;
+function passiveReset() { PS.t = 0; PS.zapT = 1.5; PS.droneT = .5; PS.shield = shieldMax(); PS.shieldIdle = 0; }
+function auraR() { return (P.passive === "fire" ? 1.8 : 2.4) * (1 + .1 * pLv()); }
+function bladePos(i, n) { const a = PS.t * 3.2 + i * Math.PI * 2 / n; return [P.x + Math.cos(a) * 1.15, P.y + Math.sin(a) * 1.15]; }
+function dronePos() { const a = P.a - .6, bob = Math.sin(PS.t * 3) * .05; return [P.x + Math.cos(a) * .7, P.y + Math.sin(a) * .7, .75 + bob]; }
+const zaps = [];
+function nearestEnemy(x, y, range, skip) {
+  let best = null, bd = range;
+  for (const e of enemies) { if (e.dying > 0 || (skip && skip.has(e))) continue;
+    const d = Math.hypot(e.x - x, e.y - y); if (d < bd && los(x, y, e.x, e.y)) { bd = d; best = e; } }
+  return best;
+}
+function updatePassive(dt) {
+  PS.t += dt;
+  const k = P.passive, pm = pMult() * dmgMult();
+  if (k === "fire" || k === "frost") {
+    const r = auraR();
+    for (const e of enemies) { if (e.dying > 0 || isAir(e) || Math.hypot(e.x - P.x, e.y - P.y) > r) continue;
+      if (k === "fire") { e.burnT = Math.max(e.burnT, .6); e.burnDps = Math.max(e.burnDps, 1.6 * pm); }
+      else { e.slowT = Math.max(e.slowT, .35); e.hp -= .45 * pm * dt; if (e.hp <= 0) kill(e); } }
+  } else if (k === "bolt") {
+    PS.zapT -= dt;
+    if (PS.zapT <= 0) {
+      let e = nearestEnemy(P.x, P.y, 6.5);
+      if (e) {
+        PS.zapT = 2.4 / (1 + .25 * pLv());
+        const hit = new Set(); let px = P.x, py = P.y;
+        for (let c = 0; c < 2 + pLv() && e; c++) {
+          hit.add(e); damage(e, 3 * pm, false); zaps.push({ kind: "bolt", x: e.x, y: e.y, t: 0, life: .18 });
+          px = e.x; py = e.y; e = nearestEnemy(px, py, 3, hit);
+        }
+        sfx.zap(); P.hitT = .1;
+      } else PS.zapT = .3;
+    }
+  } else if (k === "blades") {
+    const n = Math.min(5, 2 + pLv());
+    for (let i = 0; i < n; i++) { const [bx, by] = bladePos(i, n);
+      for (const e of enemies) { if (e.dying > 0 || isAir(e)) continue;
+        e.bladeCd = (e.bladeCd || 0);
+        if (e.bladeCd <= 0 && Math.hypot(e.x - bx, e.y - by) < .45) { damage(e, 1.5 * pm, false); e.bladeCd = .35; sfx.stab(); } } }
+    for (const e of enemies) if (e.bladeCd > 0) e.bladeCd -= dt;
+  } else if (k === "shield") {
+    PS.shieldIdle += dt;
+    if (PS.shieldIdle > 3) PS.shield = Math.min(shieldMax(), PS.shield + 15 * dt);
+  } else if (k === "drone") {
+    PS.droneT -= dt;
+    if (PS.droneT <= 0) {
+      const [dx, dy] = dronePos(), e = nearestEnemy(dx, dy, 8);
+      if (e) { PS.droneT = .7 / (1 + .2 * pLv()); damage(e, 1 * pm, false); zaps.push({ kind: "spark", x: e.x, y: e.y, t: 0, life: .15 }); sfx.drone(); }
+      else PS.droneT = .2;
+    }
+  }
+  for (let i = zaps.length - 1; i >= 0; i--) { zaps[i].t += dt; if (zaps[i].t >= zaps[i].life) zaps.splice(i, 1); }
+}
+/* ---------- Awakening (passive ultimates) ---------- */
+const ULT = { flames: [], lasers: [], tick: 0, droneIdx: 0 };
+const ULT_TINT = {
+  fire: "radial-gradient(ellipse at center, rgba(255,120,30,0) 35%, rgba(255,90,20,.55) 100%)",
+  frost: "radial-gradient(ellipse at center, rgba(160,220,255,.12) 30%, rgba(150,210,255,.6) 100%)",
+  bolt: "radial-gradient(ellipse at center, rgba(180,170,255,0) 35%, rgba(150,140,255,.55) 100%)",
+  blades: "radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(230,236,244,.4) 100%)",
+  shield: "radial-gradient(ellipse at center, rgba(255,230,140,0) 40%, rgba(255,210,90,.5) 100%)",
+  drone: "radial-gradient(ellipse at center, rgba(120,230,170,0) 40%, rgba(90,220,150,.45) 100%)",
+};
+function ultReady() { return P.ult >= P.ultNeed && P.ultT <= 0; }
+function activateUlt() {
+  if (state !== "play" || !ultReady()) return;
+  const k = P.passive; P.ult = 0; P.ultNeed += 5; ULT.tick = 0;
+  banner("각성!", PASSIVES[k].ult); sfx.ult();
+  if (k === "fire") {
+    P.ultT = 6; ULT.flames = [];
+    for (let i = 0; i < 60; i++) { const c = freeCells[(Math.random() * freeCells.length) | 0]; ULT.flames.push([c[0] + Math.random(), c[1] + Math.random(), Math.random() * 6]); }
+  } else if (k === "frost") {
+    P.ultT = 7; shots = [];
+    for (const e of enemies) if (e.dying <= 0) e.frozenT = 7;
+  } else if (k === "bolt") {
+    P.ultT = 3;
+    for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; zaps.push({ kind: "spark", x: P.x + Math.cos(a) * 1.4, y: P.y + Math.sin(a) * 1.4, t: 0, life: .45 }); }
+  } else if (k === "blades") {
+    P.ultT = 1.2;
+    for (const e of enemies) if (e.dying <= 0) e.saw = { t: -Math.random() * .3 };
+  } else if (k === "shield") {
+    P.ultT = 5; P.hp = stat.maxHp(); PS.shield = shieldMax();
+  } else if (k === "drone") {
+    P.ultT = 8; ULT.lasers = []; ULT.droneIdx = 0;
+  }
+}
+function ultDronePos(i) { const a = PS.t * 1.6 + i * Math.PI / 4; return [P.x + Math.cos(a) * 1.3, P.y + Math.sin(a) * 1.3, .85 + Math.sin(PS.t * 4 + i) * .05]; }
+function updateUlt(dt) {
+  const k = P.passive, pm = pMult() * dmgMult(), on = P.ultT > 0;
+  // Blades keep falling on marked enemies until they die, even after the timer ends.
+  for (const e of enemies) if (e.saw && e.dying <= 0) {
+    e.saw.t += dt;
+    if (e.saw.t > 5.3) { e.saw = null; continue; }
+    if (e.saw.t > .3) { e.hp -= 3 * pm * dt; e.saw.hitT = (e.saw.hitT || 0) - dt;
+      if (e.saw.hitT <= 0) { e.saw.hitT = .09; e.flash = .03; if (Math.random() < .35) sfx.stab(); }
+      if (e.hp <= 0) kill(e); }
+  }
+  if (!on) { P.eyeT = .5; return; }
+  P.ultT -= dt; ULT.tick -= dt;
+  if (k === "fire") {
+    for (const e of enemies) { if (e.dying > 0) continue; e.burnT = Math.max(e.burnT, .2); e.hp -= 2 * pMult() * dt; if (e.hp <= 0) kill(e); }
+  } else if (k === "bolt" && ULT.tick <= 0) {
+    ULT.tick = .2;
+    const near = enemies.filter(e => e.dying <= 0 && Math.hypot(e.x - P.x, e.y - P.y) < 9);
+    if (near.length) { const e = near[(Math.random() * near.length) | 0]; damage(e, 2.5 * pm, false); zaps.push({ kind: "bolt", x: e.x, y: e.y, t: 0, life: .15 }); }
+    const a = Math.random() * Math.PI * 2, r = rnd(.8, 2.5);
+    zaps.push({ kind: "spark", x: P.x + Math.cos(a) * r, y: P.y + Math.sin(a) * r, t: 0, life: .2 });
+    if (Math.random() < .5) sfx.zap();
+  } else if (k === "shield") {
+    P.eyeT = 1.25;
+  } else if (k === "drone" && ULT.tick <= 0) {
+    ULT.tick = .07;
+    const i = ULT.droneIdx++ % 8, [dx, dy, dz] = ultDronePos(i), e = nearestEnemy(dx, dy, 10);
+    if (e) { damage(e, 1.2 * pm, false); ULT.lasers.push({ x1: dx, y1: dy, z1: dz, x2: e.x, y2: e.y, z2: .4, t: 0, life: .12 }); if (i % 2) sfx.drone(); }
+  }
+  for (let i = ULT.lasers.length - 1; i >= 0; i--) { ULT.lasers[i].t += dt; if (ULT.lasers[i].t >= ULT.lasers[i].life) ULT.lasers.splice(i, 1); }
+  if (P.ultT <= 0) { P.ultT = 0; P.eyeT = .5; ULT.flames = []; ULT.lasers = []; }
+}
+function ultSprites(list) {
+  const k = P.passive, now = PS.t, on = P.ultT > 0;
+  if (on && k === "fire") for (const [x, y, ph] of ULT.flames) list.push({ x, y, tex: SPR.flame, sc: .5 + .12 * Math.sin(now * 9 + ph), lift: 0 });
+  if (on && k === "drone") for (let i = 0; i < 8; i++) { const [x, y, z] = ultDronePos(i); list.push({ x, y, tex: SPR.drone, sc: .3, lift: z }); }
+  for (const e of enemies) {
+    if (e.dying > 0) continue;
+    const top = eLift(e) + EDEF[e.type].sc;
+    if (e.frozenT > 0) list.push({ x: e.x, y: e.y, tex: SPR.frost, sc: .55, lift: eLift(e) + .1 });
+    if (e.saw) list.push({ x: e.x, y: e.y, tex: SPR.blade, sc: .4, lift: Math.max(top - .3, top + 1.6 - e.saw.t * 6) });
+  }
+}
+function passiveSprites(list) {
+  const k = P.passive, now = PS.t;
+  if (k === "fire" || k === "frost") {
+    const r = auraR(), n = k === "fire" ? 14 : 12;
+    for (let i = 0; i < n; i++) { const a = i * Math.PI * 2 / n + now * (k === "fire" ? .6 : -.4), rr = r * (.75 + .2 * Math.sin(i * 2.3));
+      list.push({ x: P.x + Math.cos(a) * rr, y: P.y + Math.sin(a) * rr, tex: k === "fire" ? SPR.flame : SPR.frost,
+        sc: k === "fire" ? .32 + .07 * Math.sin(now * 10 + i) : .3, lift: 0 }); }
+  } else if (k === "blades") {
+    const n = Math.min(5, 2 + pLv());
+    for (let i = 0; i < n; i++) { const [bx, by] = bladePos(i, n); list.push({ x: bx, y: by, tex: SPR.blade, sc: .28, lift: .3 }); }
+  } else if (k === "drone") {
+    const [dx, dy, dz] = dronePos(); list.push({ x: dx, y: dy, tex: SPR.drone, sc: .26, lift: dz });
+  }
+  for (const z of zaps) {
+    if (z.kind === "bolt") list.push({ x: z.x, y: z.y, tex: SPR.bolt, sc: 1.15, lift: -.05 });
+    else list.push({ x: z.x, y: z.y, tex: SPR.spark, sc: .35, lift: .3 });
+  }
+}
 let L = {};
 const scavAmt = () => Math.max(1, Math.round(GUNS[P.gun].res / 30));
 const magSize = d => Math.round(d.mag * (1 + .35 * (L.mag || 0)));
@@ -491,7 +818,7 @@ const fireCd = d => d.cd * Math.pow(.83, L.rate || 0);
 const dmgMult = () => 1 + .35 * (L.dmg || 0);
 const blastMult = () => 1 + .25 * (L.blast || 0);
 const stat = {
-  speed: () => 3.3 * (1 + .15 * (L.speed || 0)) * (cur === "knife" ? 1.15 : 1),
+  speed: () => 3.3 * (1 + .15 * (L.speed || 0)) * (cur === "knife" ? 1.15 : 1) * (P.ultT > 0 && P.passive === "shield" ? 1.35 : 1),
   maxHp: () => 100 + 25 * (L.hp || 0),
 };
 
@@ -538,6 +865,9 @@ const sfx = {
   hurt(){ tone(110,.22,"sawtooth",.16,45); },
   pick(){ tone(620,.14,"sine",.14,1250); },
   spit(){ tone(500,.18,"triangle",.07,180); },
+  zap(){ noise(.25,.4,5000,"highpass"); tone(1800,.12,"sawtooth",.06,300); },
+  drone(){ tone(1300,.05,"square",.035,700); },
+  ult(){ tone(220,.5,"sawtooth",.12,880); tone(440,.4,"square",.06,1320,.1); noise(.5,.3,2000); },
   wave(){ tone(440,.15,"square",.06); tone(660,.22,"square",.06,0,.15); },
   perk(){ tone(520,.1,"sine",.12); tone(780,.1,"sine",.12,0,.08); tone(1040,.18,"sine",.12,0,.16); },
 };
@@ -546,13 +876,29 @@ const sfx = {
 const PL = 0.66;
 let W = 480, H = 270, proj = 360, zBuf = new Float32Array(W), skyGrad, floorGrad;
 let state = "menu";
-const P = { x: 0, y: 0, a: 0, gun: "rifle", hp: 100, reloadT: 0, reloadMax: 1, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, bob: 0,
+const P = { x: 0, y: 0, a: 0, pitch: 0, gun: "rifle", passive: "fire", ult: 0, ultNeed: 20, ultT: 0, eye: .5, eyeT: .5, hp: 100, reloadT: 0, reloadMax: 1, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, bob: 0,
   hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0, quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0, note: "" };
 let cur = "primary", prevMain = "primary";
 const ammo = { primary: { mag: 30, res: 120 }, pistol: { mag: 12, res: Infinity } }, counts = { grenade: 3, molotov: 2 };
 let enemies = [], shots = [], items = [], throws = [], fires = [], fx = [], clearT = -1;
 const keys = {}; let fireHeld = false;
 const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, look = { id: null, lx: 0 };
+
+let tp = false; try { tp = localStorage.getItem("bunker-view") === "3"; } catch (e) {}
+const CAM = { x: 0, y: 0 };
+function updateCam() {
+  if (!tp) { CAM.x = P.x; CAM.y = P.y; return; }
+  // Over-the-shoulder: 2 tiles back and a little to the right, pulled in when a wall is in the way.
+  const ca = Math.cos(P.a), sa = Math.sin(P.a), vx = -ca*2 - sa*.4, vy = -sa*2 + ca*.4;
+  let t = 0;
+  while (t < 1 && freeAt(P.x + vx*(t + .05), P.y + vy*(t + .05), .12)) t += .05;
+  CAM.x = P.x + vx*t; CAM.y = P.y + vy*t;
+}
+function setView(third) {
+  tp = third; try { localStorage.setItem("bunker-view", tp ? "3" : "1"); } catch (e) {}
+  const label = tp ? "3인칭" : "1인칭";
+  $("viewHud").textContent = label; $("viewMenuBtn").textContent = "시점: " + label; $("viewPauseBtn").textContent = "시점: " + label;
+}
 
 let best = 0; try { best = +localStorage.getItem("bunker-best") || 0; } catch (e) {}
 function showBest() { $("bestNote").textContent = best ? `최고 점수 ${best.toLocaleString()}` : ""; }
@@ -598,12 +944,15 @@ function pickCell(minD, maxD, used) {
 }
 function spawnWave() {
   P.wave++; flowCell = -1; buildFlow();
-  const n = P.wave, used = new Set(), grunts = 2 + n, spitters = Math.floor(n / 2);
-  for (let k = 0; k < grunts + spitters; k++) {
-    const sp = k >= grunts, [i,j] = pickCell(9, 99, used);
-    enemies.push({ type: sp ? "spitter" : "grunt", x: i+.5, y: j+.5, hp: (sp ? 3 : 2) + Math.floor(n/2), cd: rnd(.5, 2), t: Math.random()*6,
-      flash: 0, dying: 0, slowT: 0, burnT: 0, burnDps: 0 });
-  }
+  const n = P.wave, used = new Set(), boss = n % 10 === 0, half = boss ? .5 : 1;
+  const grunts = Math.round((2 + n) * half), spitters = Math.floor(n / 2 * half), flyers = Math.min(6, Math.floor((n - 1) / 2 * half));
+  const add = (type, hp) => { const [i,j] = pickCell(9, 99, used);
+    enemies.push({ type, x: i+.5, y: j+.5, hp, maxHp: hp, cd: rnd(.5, 2), t: Math.random()*6, z: 1.35, orbit: Math.random()*6.28,
+      flash: 0, dying: 0, slowT: 0, burnT: 0, burnDps: 0, ringT: 3 }); };
+  for (let k = 0; k < grunts; k++) add("grunt", 2 + Math.floor(n/2));
+  for (let k = 0; k < spitters; k++) add("spitter", 3 + Math.floor(n/2));
+  for (let k = 0; k < flyers; k++) add("flyer", 2 + Math.floor(n/3));
+  if (boss) add("boss", 60 + n * 6);
   const u2 = new Set();
   ["health","ammo","ammo"].forEach(type => { const [i,j] = pickCell(3, 12, u2); items.push({ type, x: i+.5, y: j+.5, t: Math.random()*6 }); });
 }
@@ -616,19 +965,31 @@ function reset() {
   L = {};
   Object.assign(P, { hp: 100, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0,
     quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0 });
-  cur = "primary"; prevMain = "primary";
-  clearT = -1; fireHeld = false; loadZone(0); refillAll(); spawnWave(); buildWbar();
+  cur = "primary"; prevMain = "primary"; clearHitMarks(); zaps.length = 0;
+  clearT = -1; fireHeld = false; loadZone(0); refillAll(); passiveReset(); P.pitch = 0; P.ultNeed = 20; P.ult = 0; P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = []; spawnWave(); buildWbar();
 }
 
 /* ---------- Combat ---------- */
-function hurtPlayer(d) {
-  if (state !== "play") return;
-  P.hp = Math.max(0, P.hp - d); P.hurtT = .45; sfx.hurt();
+const hitMarks = [];
+function hurtPlayer(d, sx, sy) {
+  if (state !== "play" || (P.ultT > 0 && P.passive === "shield")) return;
+  if (P.passive === "shield") {
+    PS.shieldIdle = 0; const absorb = Math.min(PS.shield, d); PS.shield -= absorb; d -= absorb;
+    if (d <= 0) { P.hurtT = .15; tone(900,.08,"triangle",.06,500); }
+  }
+  if (d > 0) { P.hp = Math.max(0, P.hp - d); P.hurtT = .45; sfx.hurt(); }
+  if (sx !== undefined) {
+    const el = document.createElement("div"); el.className = "hitmark"; $("hitLayer").appendChild(el);
+    hitMarks.push({ el, x: sx, y: sy, t: 0, life: 1.3 });
+    if (hitMarks.length > 6) hitMarks.shift().el.remove();
+  }
   if (P.hp <= 0) gameOver();
 }
 function kill(e) {
   if (e.dying > 0) return;
-  e.dying = .35; P.kills++; P.score += e.type === "grunt" ? 100 : 200; sfx.die();
+  e.dying = .35; P.kills++; P.score += EDEF[e.type].score; sfx.die();
+  if (e.type === "boss") { banner("보스 처치!", `+${EDEF.boss.score}점`); for (const t of ["health","ammo","health","ammo"]) items.push({ type: t, x: e.x + rnd(-.4,.4), y: e.y + rnd(-.4,.4), t: 0 }); }
+  if (P.ultT <= 0) P.ult = Math.min(P.ultNeed, P.ult + 1);
   if (L.leech) P.hp = Math.min(stat.maxHp(), P.hp + 4*L.leech);
   if (L.scav) ammo.primary.res = Math.min(GUNS[P.gun].res * 3, ammo.primary.res + scavAmt()*L.scav);
   if (Math.random() < .3) items.push({ type: Math.random() < .6 ? "ammo" : "health", x: e.x, y: e.y, t: 0 });
@@ -641,14 +1002,23 @@ function damage(e, d, status) {
   if (e.hp <= 0) kill(e);
 }
 function hitRay(ang, d) {
-  const ca = Math.cos(ang), sa = Math.sin(ang), wallD = castRay(ca, sa), hits = [];
+  // In third person the shot travels along the camera's centre line so it lands under the crosshair.
+  const o = tp ? CAM : P, ca = Math.cos(ang), sa = Math.sin(ang), hits = [];
+  // Looking up or down tilts the bullet: its height at distance t is eye + slope*t. Above wall height it flies over walls.
+  const slope = P.pitch * H / proj, zAt = t => P.eye + slope * t;
+  let wallD = castRay(o.x, o.y, ca, sa); if (zAt(wallD) >= 1) wallD = 99;
+  const minT = (P.x - o.x)*ca + (P.y - o.y)*sa + .1;
   for (const e of enemies) { if (e.dying > 0) continue;
-    const dx = e.x - P.x, dy = e.y - P.y, ty = dx*ca + dy*sa, tx = -dx*sa + dy*ca;
-    if (ty > .15 && ty < wallD + .2 && Math.abs(tx) < (e.type === "grunt" ? .3 : .26)) hits.push([ty, e]); }
+    const dx = e.x - o.x, dy = e.y - o.y, ty = dx*ca + dy*sa, tx = -dx*sa + dy*ca, D = EDEF[e.type];
+    if (ty <= Math.max(.15, minT - .5) || ty >= wallD + .2 || Math.abs(tx) >= D.hw) continue;
+    const z = zAt(ty), lo = eLift(e);
+    const pad = D.pad || .1;
+    if (z < lo - pad || z > lo + D.sc + pad) continue;
+    hits.push([ty, e]); }
   hits.sort((a, b) => a[0] - b[0]);
   const n = Math.min(hits.length, 1 + (d.pierce || 0) + (L.pierce || 0));
   for (let i = 0; i < n; i++) {
-    const [dist, e] = hits[i], crit = L.crit && Math.random() < .15*L.crit;
+    const dist = hits[i][0] - Math.max(0, minT - .1), e = hits[i][1], crit = L.crit && Math.random() < .15*L.crit;
     damage(e, d.dmg * dmgMult() * (crit ? 2.5 : 1) * (dist > d.falloff ? .35 : 1), true);
     moveEnt(e, e.x + ca*.08*d.dmg, e.y + sa*.08*d.dmg, .24);
   }
@@ -684,7 +1054,7 @@ function knifeAttack() {
   let any = false;
   for (const e of enemies) { if (e.dying > 0) continue;
     const dx = e.x - P.x, dy = e.y - P.y, dist = Math.hypot(dx, dy);
-    if (dist > 1.45) continue;
+    if (dist > (e.type === "boss" ? 1.8 : 1.45) || isAir(e)) continue;
     let da = Math.atan2(dy, dx) - P.a; da = Math.atan2(Math.sin(da), Math.cos(da));
     if (Math.abs(da) > .65 || !los(P.x, P.y, e.x, e.y)) continue;
     damage(e, 3 * (1 + .6 * (L.blade || 0)) * dmgMult(), true);
@@ -702,8 +1072,8 @@ function throwIt(kind, quick) {
 function explode(x, y) {
   const r = 2.4 * blastMult(), base = 9 * blastMult() * dmgMult();
   for (const e of enemies) { if (e.dying > 0) continue;
-    const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy);
-    if (d > r || !los(x, y, e.x, e.y)) continue;
+    const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy, isAir(e) ? eLift(e) : 0);
+    if (d > r || (!isAir(e) && !los(x, y, e.x, e.y))) continue;
     damage(e, base * (1 - d/r*.6), false);
     if (d > .01) moveEnt(e, e.x + dx/d*.5, e.y + dy/d*.5, .24);
   }
@@ -743,6 +1113,23 @@ function quickThrow(kind) {
   throwIt(kind, true);
 }
 
+/* Flying bats circle above the player, over the walls, and drop acid from above. */
+function updateFlyer(e, dt, slow) {
+  e.orbit += dt * .3;
+  const tx = P.x + Math.cos(e.orbit) * 1.7, ty = P.y + Math.sin(e.orbit) * 1.7;
+  const mx = tx - e.x, my = ty - e.y, md = Math.hypot(mx, my), sp = Math.min(md * 1.2, 1.0) * slow;
+  if (md > .01) { e.x += mx/md*sp*dt; e.y += my/md*sp*dt; }
+  e.x = Math.max(1.2, Math.min(N - 1.2, e.x)); e.y = Math.max(1.2, Math.min(N - 1.2, e.y));
+  e.z = 1.4 + Math.sin(e.t * 1.5) * .08;
+  for (const o of enemies) { if (o === e || !isAir(o) || o.dying > 0) continue; const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy);
+    if (od > 0 && od < .6) { e.x += ox/od*.6*dt; e.y += oy/od*.6*dt; } }
+  if (Math.hypot(P.x - e.x, P.y - e.y) < 3.5 && e.cd <= 0) {
+    const T = 1.3;
+    shots.push({ x: e.x, y: e.y, z: e.z, vx: (P.x - e.x)/T, vy: (P.y - e.y)/T, vz: (.45 - e.z)/T, life: T + .4, acid: true });
+    e.cd = 2.6 - Math.min(P.wave * .05, .8); sfx.spit();
+  }
+}
+
 /* ---------- Update ---------- */
 function update(dt) {
   let fwd = 0, str = 0, turn = 0;
@@ -776,6 +1163,8 @@ function update(dt) {
     if (e.dying > 0) { e.dying -= dt; if (e.dying <= 0) enemies.splice(i, 1); continue; }
     const slow = e.slowT > 0 ? .45 : 1; e.slowT -= dt; e.cd -= dt * slow;
     if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burnDps * dt; if (e.hp <= 0) { kill(e); continue; } } else e.burnDps = 0;
+    if (e.frozenT > 0) { e.frozenT -= dt; continue; }
+    if (e.type === "flyer") { updateFlyer(e, dt, slow); continue; }
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy), see = los(e.x, e.y, P.x, P.y);
     let mx = 0, my = 0;
     if (see) { mx = dx/d; my = dy/d; }
@@ -783,26 +1172,39 @@ function update(dt) {
       for (const [ox,oy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const f = flow[(cj+oy)*N + ci+ox]; if (f >= 0 && (bv < 0 || f < bv)) { bv = f; bx = ci+ox; by = cj+oy; } }
       if (bx >= 0) { const tx = bx+.5 - e.x, ty = by+.5 - e.y, tl = Math.hypot(tx,ty) || 1; mx = tx/tl; my = ty/tl; } }
     let speed = 0;
-    if (e.type === "grunt") {
+    if (e.type === "boss") {
+      const rage = e.hp < e.maxHp / 2;
+      speed = rage ? 1.55 : 1.1;
+      if (d < 1.15) { speed = 0; if (e.cd <= 0) { hurtPlayer(18 + Math.floor(P.wave / 2), e.x, e.y); e.cd = 1.2; P.shakeT = .25; } }
+      e.ringT -= dt * slow;
+      if (e.ringT <= 0) {
+        const cnt = rage ? 16 : 12, off = Math.random() * 6.28;
+        for (let q = 0; q < cnt; q++) { const a = off + q * Math.PI * 2 / cnt; shots.push({ x: e.x, y: e.y, z: .55, vx: Math.cos(a)*3.6, vy: Math.sin(a)*3.6, life: 5 }); }
+        if (see) for (const q of [-.15, 0, .15]) { const a = Math.atan2(dy, dx) + q; shots.push({ x: e.x, y: e.y, z: .55, vx: Math.cos(a)*5, vy: Math.sin(a)*5, life: 4 }); }
+        e.ringT = rage ? 2.4 : 3.6; sfx.spit(); P.shakeT = Math.max(P.shakeT, .12);
+      }
+    } else if (e.type === "grunt") {
       speed = Math.min(1.5 + P.wave*.12, 3);
-      if (d < .75) { speed = 0; if (e.cd <= 0) { hurtPlayer(8 + Math.min(P.wave, 10)); e.cd = .9; } }
+      if (d < .75) { speed = 0; if (e.cd <= 0) { hurtPlayer(8 + Math.min(P.wave, 10), e.x, e.y); e.cd = .9; } }
     } else {
       speed = 1.3;
       if (see && d < 3.2) { mx = -mx; my = -my; speed = 1.1; }
       else if (see && d < 6.5) speed = 0;
       if (see && d < 9 && e.cd <= 0) {
-        shots.push({ x: e.x, y: e.y, vx: dx/d*4.6, vy: dy/d*4.6, life: 4 }); sfx.spit();
+        shots.push({ x: e.x, y: e.y, z: .5, vx: dx/d*4.6, vy: dy/d*4.6, life: 4 }); sfx.spit();
         e.cd = Math.max(1.1, 2.4 - P.wave*.08);
       }
     }
-    for (const o of enemies) { if (o === e || o.dying > 0) continue; const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy);
+    for (const o of enemies) { if (o === e || o.dying > 0 || isAir(o)) continue; const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy);
       if (od > 0 && od < .55) { mx += ox/od*.8; my += oy/od*.8; } }
-    moveEnt(e, e.x + mx*speed*slow*dt, e.y + my*speed*slow*dt, .24);
+    moveEnt(e, e.x + mx*speed*slow*dt, e.y + my*speed*slow*dt, e.type === "boss" ? .32 : .24);
   }
   // enemy fireballs
-  for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.x += s.vx*dt; s.y += s.vy*dt; s.life -= dt;
-    if (s.life <= 0 || wallAt(s.x, s.y)) { shots.splice(i, 1); continue; }
-    if (Math.hypot(s.x - P.x, s.y - P.y) < .35) { shots.splice(i, 1); hurtPlayer(10 + Math.min(P.wave, 8)); } }
+  updatePassive(dt); updateUlt(dt);
+  P.eye += (P.eyeT - P.eye) * Math.min(1, dt * 4);
+  for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.x += s.vx*dt; s.y += s.vy*dt; s.z += (s.vz || 0)*dt; s.life -= dt;
+    if (s.life <= 0 || s.z <= 0 || (s.z < 1 && wallAt(s.x, s.y))) { shots.splice(i, 1); continue; }
+    if (s.z < 1.05 && Math.hypot(s.x - P.x, s.y - P.y) < (s.acid ? .45 : .35)) { shots.splice(i, 1); hurtPlayer((s.acid ? 9 : 10) + Math.min(P.wave, 8), s.x - s.vx, s.y - s.vy); } }
   // grenades + molotovs in flight
   for (let i = throws.length - 1; i >= 0; i--) {
     const t = throws[i]; t.t += dt;
@@ -811,7 +1213,7 @@ function update(dt) {
     if (wallAt(nx, ny)) { t.vy = -t.vy*.45; ny = t.y; hitWall = true; }
     t.x = nx; t.y = ny; t.vz -= 9*dt; t.z += t.vz*dt;
     if (t.kind === "molotov") {
-      const hitE = enemies.some(e => e.dying <= 0 && Math.hypot(e.x - t.x, e.y - t.y) < .4);
+      const hitE = enemies.some(e => e.dying <= 0 && !isAir(e) && Math.hypot(e.x - t.x, e.y - t.y) < .4);
       if (hitWall || hitE || t.z <= .02) { shatter(t.x, t.y); throws.splice(i, 1); }
       continue;
     }
@@ -822,7 +1224,7 @@ function update(dt) {
   for (let i = fires.length - 1; i >= 0; i--) {
     const f = fires[i]; f.t += dt;
     if (f.t >= f.life) { fires.splice(i, 1); continue; }
-    for (const e of enemies) { if (e.dying > 0) continue;
+    for (const e of enemies) { if (e.dying > 0 || isAir(e)) continue;
       if (Math.hypot(e.x - f.x, e.y - f.y) < f.r) { e.burnT = Math.max(e.burnT, 1.2); e.burnDps = Math.max(e.burnDps, 2.4 * dmgMult() * blastMult()); } }
   }
   for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt; if (fx[i].t >= fx[i].life) fx.splice(i, 1); }
@@ -868,7 +1270,19 @@ function openGunSelect() {
   });
   show("gunMenu");
 }
-function pickGun(id) { if (state !== "select") return; P.gun = id; startGame(); }
+function pickGun(id) { if (state !== "select") return; P.gun = id; openPassiveSelect(); }
+function openPassiveSelect() {
+  state = "passsel";
+  $("passEyebrow").textContent = `패시브 선택 · 주무기 ${GUNS[P.gun].name}`;
+  const list = $("passList"); list.textContent = "";
+  PASSIVE_IDS.forEach((id, i) => {
+    const d = PASSIVES[id], b = card(d.c, d.g, d.name, `각성: ${d.ult}`, d.desc + " 각성하면 " + d.ultDesc + ".", `${i+1}번 키`);
+    b.id = "pass-" + id; b.onclick = () => pickPassive(id);
+    list.appendChild(b);
+  });
+  show("passMenu");
+}
+function pickPassive(id) { if (state !== "passsel") return; P.passive = id; startGame(); }
 
 let offer = [];
 function openPerks() {
@@ -890,14 +1304,18 @@ function choosePerk(i) {
   if (state !== "perk" || !offer[i]) return;
   const p = offer[i]; L[p.id] = (L[p.id] || 0) + 1; sfx.perk();
   if (p.id === "hp") P.hp = stat.maxHp();
-  loadZone(P.wave); spawnWave(); refillAll();
+  loadZone(P.wave); spawnWave(); refillAll(); PS.shield = shieldMax(); zaps.length = 0;
   P.swapT = 0; P.autoBackT = 0; if (isThrow(cur)) cur = prevMain;
+  P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = [];
   state = "play"; show(null); lock(); updateWbar(true);
-  banner(Z.name, `웨이브 ${P.wave}`); sfx.wave();
+  if (P.wave % 10 === 0) banner("보스 출현!", `${Z.name} · 웨이브 ${P.wave}`); else banner(Z.name, `웨이브 ${P.wave}`);
+  if (P.wave === 3) { note("위에서 공격하는 박쥐가 나타났어요! 위를 보고 쏘세요"); P.noteT = 4; }
+  sfx.wave();
 }
 function ownedChips(el) {
   el.textContent = "";
   const g = document.createElement("span"); g.className = "chip gun"; g.textContent = GUNS[P.gun].name; el.appendChild(g);
+  const ps = document.createElement("span"); ps.className = "chip pass"; ps.textContent = PASSIVES[P.passive].name + (pLv() ? ` ${pLv() + 1}` : ""); el.appendChild(ps);
   for (const p of PERKS) if (L[p.id]) { const c = document.createElement("span"); c.className = "chip"; c.textContent = `${p.name} ${L[p.id]}`; el.appendChild(c); }
 }
 
@@ -939,26 +1357,31 @@ function resize() {
   proj = (W / 2) / PL; makeGrads();
 }
 function render() {
-  ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, H/2);
-  ctx.fillStyle = floorGrad; ctx.fillRect(0, H/2, W, H/2);
+  const hz = H/2 + P.pitch * H;
+  ctx.save(); ctx.translate(0, hz - H/2);
+  ctx.fillStyle = skyGrad; ctx.fillRect(0, -H, W, H * 1.5);
+  ctx.fillStyle = floorGrad; ctx.fillRect(0, H/2, W, H * 1.5);
+  ctx.restore();
+  updateCam();
+  const ox = CAM.x, oy = CAM.y;
   const dirX = Math.cos(P.a), dirY = Math.sin(P.a), plX = -dirY*PL, plY = dirX*PL;
   ctx.fillStyle = Z.fog;
   for (let x = 0; x < W; x++) {
     const camX = 2*x/W - 1, rdx = dirX + plX*camX, rdy = dirY + plY*camX;
-    let mx = P.x|0, my = P.y|0;
+    let mx = ox|0, my = oy|0;
     const ddx = Math.abs(1/rdx), ddy = Math.abs(1/rdy);
     let stepX, stepY, sdx, sdy, side = 0, hit = 0;
-    if (rdx < 0) { stepX = -1; sdx = (P.x - mx)*ddx; } else { stepX = 1; sdx = (mx + 1 - P.x)*ddx; }
-    if (rdy < 0) { stepY = -1; sdy = (P.y - my)*ddy; } else { stepY = 1; sdy = (my + 1 - P.y)*ddy; }
+    if (rdx < 0) { stepX = -1; sdx = (ox - mx)*ddx; } else { stepX = 1; sdx = (mx + 1 - ox)*ddx; }
+    if (rdy < 0) { stepY = -1; sdy = (oy - my)*ddy; } else { stepY = 1; sdy = (my + 1 - oy)*ddy; }
     for (let k = 0; k < 64; k++) {
       if (sdx < sdy) { sdx += ddx; mx += stepX; side = 0; } else { sdy += ddy; my += stepY; side = 1; }
       if (mx < 0 || my < 0 || mx >= N || my >= N) { hit = 2; break; }
       hit = MAP[my*N + mx]; if (hit) break;
     }
     const perp = Math.max(.05, side === 0 ? sdx - ddx : sdy - ddy);
-    let wx = side === 0 ? P.y + perp*rdy : P.x + perp*rdx; wx -= Math.floor(wx);
+    let wx = side === 0 ? oy + perp*rdy : ox + perp*rdx; wx -= Math.floor(wx);
     let tx = (wx * 64) | 0; if (side === 0 && rdx > 0) tx = 63 - tx; if (side === 1 && rdy < 0) tx = 63 - tx;
-    const lh = proj / perp, top = H/2 - lh/2;
+    const lh = proj / perp, top = hz - lh * (1 - P.eye);
     ctx.drawImage(TEX[Z.tex[(hit || 2) - 1]], tx, 0, 1, 64, x, top, 1, lh);
     const a = Math.min(.55, perp/26 + (side ? .1 : 0));
     if (a > .02) { ctx.globalAlpha = a; ctx.fillRect(x, top, 1, lh); ctx.globalAlpha = 1; }
@@ -967,10 +1390,10 @@ function render() {
   const list = [];
   for (const e of enemies) {
     const k = e.type, shrink = e.dying > 0 ? e.dying/.35 : 1;
-    const tex = e.flash > 0 || e.dying > 0 ? SPR[k+"F"] : e.burnT > 0 && e.slowT > 0 ? SPR[k+"Both"] : e.burnT > 0 ? SPR[k+"Fire"] : e.slowT > 0 ? SPR[k+"Ice"] : SPR[k];
-    list.push({ x: e.x, y: e.y, tex, sc: (k === "grunt" ? .78 : .6) * shrink, lift: k === "grunt" ? Math.abs(Math.sin(e.t*8))*.03 : .28 + Math.sin(e.t*3)*.06 });
+    const tex = e.flash > 0 || e.dying > 0 ? SPR[k+"F"] : e.frozenT > 0 ? SPR[k+"Ice"] : e.burnT > 0 && e.slowT > 0 ? SPR[k+"Both"] : e.burnT > 0 ? SPR[k+"Fire"] : e.slowT > 0 ? SPR[k+"Ice"] : SPR[k];
+    list.push({ x: e.x, y: e.y, tex, sc: EDEF[k].sc * shrink, lift: eLift(e) });
   }
-  for (const s of shots) list.push({ x: s.x, y: s.y, tex: SPR.fireball, sc: .3, lift: .38 });
+  for (const s of shots) list.push({ x: s.x, y: s.y, tex: s.acid ? SPR.acid : SPR.fireball, sc: .3, lift: s.z - .15 });
   for (const it of items) list.push({ x: it.x, y: it.y, tex: SPR[it.type], sc: .38, lift: .02 + Math.abs(Math.sin(it.t*3))*.04 });
   for (const t of throws) list.push({ x: t.x, y: t.y, tex: SPR[t.kind], sc: t.kind === "grenade" ? .17 : .22, lift: t.z });
   const now = performance.now() / 1000;
@@ -980,20 +1403,36 @@ function render() {
   }
   for (const b of fx) { const p = b.t / b.life, sc = (.5 + 2.2*Math.sin(Math.min(1, p*1.6) * Math.PI/2)) * (1 - p*.6);
     list.push({ x: b.x, y: b.y, tex: SPR.boom, sc, lift: .35 - sc/2 }); }
+  if (state !== "menu" && state !== "select" && state !== "passsel") { passiveSprites(list); ultSprites(list); }
+  if (tp) {
+    const kind = cur === "primary" ? P.gun : cur, moving = state === "play" && Math.abs(Math.sin(P.bob)) > .01;
+    const key = kind + (moving && Math.sin(P.bob) > 0 ? 1 : 0) + (P.hurtT > .25 ? "H" : "");
+    list.push({ x: P.x, y: P.y, tex: SPR.me[key], sc: .62, lift: (P.knifeT > 0 ? .02 : 0) + (P.eye - .5) });
+    if (P.flash > 0 && isGun(cur)) list.push({ x: P.x + dirX*.55 - dirY*.12, y: P.y + dirY*.55 + dirX*.12, tex: SPR.fireball, sc: .22, lift: .38 });
+  }
   const inv = 1 / (plX*dirY - dirX*plY);
-  for (const s of list) { const sx = s.x - P.x, sy = s.y - P.y; s.tx = inv*(dirY*sx - dirX*sy); s.ty = inv*(-plY*sx + plX*sy); }
+  for (const s of list) { const sx = s.x - ox, sy = s.y - oy; s.tx = inv*(dirY*sx - dirX*sy); s.ty = inv*(-plY*sx + plX*sy); }
   list.sort((a, b) => b.ty - a.ty);
   for (const s of list) {
     if (s.ty < .12 || s.sc <= .01) continue;
     const scrX = (W/2)*(1 + s.tx/s.ty), unit = proj/s.ty, h = s.sc*unit, w = h;
-    const bottom = H/2 + unit/2 - s.lift*unit, top = bottom - h, left = scrX - w/2;
+    const bottom = hz + unit*P.eye - s.lift*unit, top = bottom - h, left = scrX - w/2;
     const x0 = Math.max(0, Math.floor(left)), x1 = Math.min(W - 1, Math.floor(left + w));
     for (let x = x0; x <= x1; x++) {
       if (s.ty >= zBuf[x]) continue;
       ctx.drawImage(s.tex, Math.min(63, ((x - left)/w*64) | 0), 0, 1, 64, x, top, 1, h);
     }
   }
-  drawWeapon();
+  if (ULT.lasers.length) {
+    const proj3 = (x, y, z) => { const sx = x - ox, sy = y - oy, tx = inv*(dirY*sx - dirX*sy), ty = inv*(-plY*sx + plX*sy);
+      if (ty < .1) return null; const unit = proj/ty; return [(W/2)*(1 + tx/ty), hz + unit*P.eye - z*unit]; };
+    ctx.lineCap = "round";
+    for (const l of ULT.lasers) { const a = proj3(l.x1, l.y1, l.z1), b = proj3(l.x2, l.y2, l.z2); if (!a || !b) continue;
+      const f = 1 - l.t / l.life;
+      ctx.strokeStyle = `rgba(90,255,170,${.45*f})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      ctx.strokeStyle = `rgba(230,255,240,${f})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+  }
+  if (!tp) drawWeapon();
 }
 
 /* ---------- First-person weapons ---------- */
@@ -1146,9 +1585,11 @@ function hud() {
   setText("enemyNum", String(enemies.filter(e => e.dying <= 0).length));
   setText("scoreNum", P.score.toLocaleString());
   $("hpFill").style.width = (P.hp / mh * 100) + "%";
+  const sm = shieldMax(); $("shBar").hidden = !sm; if (sm) $("shFill").style.width = (PS.shield / sm * 100) + "%";
   let st = "";
   if (state === "play") {
     if (P.noteT > 0) st = P.note;
+    else if (P.ultT > 0 && P.passive !== "blades") st = `각성 · ${PASSIVES[P.passive].ult} ${Math.ceil(P.ultT)}초` + (P.passive === "shield" ? " · 비행 중 무적" : "");
     else if (P.reloadT > 0) st = "장전 중…";
     else if (isGun(cur)) {
       const a = ammo[cur], size = magSize(gunDef(cur));
@@ -1156,6 +1597,17 @@ function hud() {
     }
   }
   setText("status", st);
+  const bossE = state === "play" || state === "pause" ? enemies.find(e => e.type === "boss" && e.dying <= 0) : null;
+  $("bossBar").hidden = !bossE;
+  if (bossE) { $("bossFill").style.width = Math.max(0, bossE.hp / bossE.maxHp * 100) + "%"; setText("bossName", bossE.hp < bossE.maxHp / 2 ? "보스 · 괴물 군주 (분노)" : "보스 · 괴물 군주"); }
+  const ub = $("ultBtn"), up = Math.floor(P.ult);
+  ub.hidden = state !== "play" && state !== "pause";
+  ub.style.setProperty("--uc", PASSIVES[P.passive].c); ub.style.setProperty("--up", P.ultT > 0 ? 100 : up / P.ultNeed * 100);
+  ub.classList.toggle("ready", ultReady());
+  setText("ultPct", P.ultT > 0 ? Math.ceil(P.ultT) + "초" : ultReady() ? (isTouch ? "누르기" : "X 키") : `${up}/${P.ultNeed}`);
+  const tint = $("ultTint");
+  if (tint.dataset.k !== P.passive) { tint.dataset.k = P.passive; tint.style.background = ULT_TINT[P.passive]; }
+  tint.style.opacity = P.ultT > 0 && state === "play" ? "1" : "0";
   if (isTouch) setText("fireBtn", isGun(cur) ? "발사" : cur === "knife" ? "베기" : "던지기");
   $("vignette").style.opacity = P.hurtT > 0 ? Math.min(1, P.hurtT/.45) : (P.hp < mh*.3 && state === "play" ? .25 + Math.sin(performance.now()/200)*.1 : 0);
   $("cross").classList.toggle("hit", P.hitT > 0);
@@ -1166,8 +1618,8 @@ function hud() {
 }
 
 /* ---------- Flow control ---------- */
-function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu"].forEach(m => $(m).hidden = m !== id); }
-function startGame() { initAudio(); reset(); state = "play"; show(null); banner(Z.name, `${GUNS[P.gun].name} · 웨이브 1`); sfx.wave(); lock(); }
+function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu","passMenu"].forEach(m => $(m).hidden = m !== id); }
+function startGame() { initAudio(); reset(); state = "play"; show(null); banner(Z.name, `${GUNS[P.gun].name} · ${PASSIVES[P.passive].name} · 웨이브 1`); sfx.wave(); lock(); }
 function pause() {
   if (state !== "play") return; state = "pause"; fireHeld = false; joy.id = look.id = null; $("joyBase").style.display = "none";
   $("pauseZone").textContent = `일시정지 · ${Z.name} · 웨이브 ${P.wave}`; ownedChips($("ownedList")); show("pauseMenu"); unlock();
@@ -1191,7 +1643,11 @@ $("againBtn").onclick = openGunSelect;
 $("restartBtn").onclick = openGunSelect;
 $("resumeBtn").onclick = resume;
 $("pauseBtn").onclick = () => state === "play" ? pause() : resume();
-$("soundBtn").onclick = () => { muted = !muted; $("soundBtn").textContent = "소리: " + (muted ? "꺼짐" : "켜짐"); };
+$("viewHud").onclick = () => setView(!tp);
+$("viewMenuBtn").onclick = () => setView(!tp);
+$("viewPauseBtn").onclick = () => setView(!tp);
+setView(tp);
+$("soundBtn").onclick =() => { muted = !muted; $("soundBtn").textContent = "소리: " + (muted ? "꺼짐" : "켜짐"); };
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
 
 /* Keyboard + mouse */
@@ -1199,13 +1655,16 @@ addEventListener("keydown", e => {
   if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
   const num = /^Digit[1-5]$/.test(e.code) ? +e.code.slice(5) : 0;
   if (state === "select" && num >= 1 && num <= 4) { pickGun(PRIMARY_IDS[num - 1]); return; }
+  if (state === "passsel" && e.code.startsWith("Digit")) { const n = +e.code.slice(5); if (n >= 1 && n <= PASSIVE_IDS.length) pickPassive(PASSIVE_IDS[n - 1]); return; }
   if (state === "perk" && num >= 1 && num <= 3) { choosePerk(num - 1); return; }
   if (e.code === "Escape" || e.code === "KeyP") { state === "play" ? pause() : resume(); return; }
   if (state === "play") {
     if (num) { switchTo(SLOTS[num - 1]); return; }
     if (e.code === "KeyG") { quickThrow("grenade"); return; }
     if (e.code === "KeyF") { quickThrow("molotov"); return; }
+    if (e.code === "KeyX") { activateUlt(); return; }
   }
+  if (e.code === "KeyV" && state !== "select" && state !== "perk" && state !== "passsel") { setView(!tp); return; }
   keys[e.code] = true;
 });
 addEventListener("keyup", e => { keys[e.code] = false; });
@@ -1215,7 +1674,10 @@ cvs.addEventListener("mousedown", e => { if (isTouch || state !== "play" || e.bu
 addEventListener("mouseup", () => { if (!isTouch) fireHeld = false; });
 addEventListener("mousemove", e => {
   if (state !== "play" || isTouch) return;
-  if (document.pointerLockElement === cvs || (e.buttons & 1)) P.a += (e.movementX || 0) * .0025;
+  if (document.pointerLockElement === cvs || (e.buttons & 1)) {
+    P.a += (e.movementX || 0) * .0025;
+    P.pitch = Math.max(-.42, Math.min(.42, P.pitch - (e.movementY || 0) * .0016));
+  }
 });
 
 /* Touch */
@@ -1228,7 +1690,7 @@ game.addEventListener("touchstart", e => {
       joy.id = t.identifier; joy.ox = t.clientX; joy.oy = t.clientY; joy.x = joy.y = 0;
       const r = game.getBoundingClientRect();
       joyBase.style.left = (t.clientX - r.left) + "px"; joyBase.style.top = (t.clientY - r.top) + "px"; joyBase.style.display = "block"; joyKnob.style.transform = "";
-    } else if (look.id === null) { look.id = t.identifier; look.lx = t.clientX; }
+    } else if (look.id === null) { look.id = t.identifier; look.lx = t.clientX; look.ly = t.clientY; }
   }
 }, { passive: false });
 game.addEventListener("touchmove", e => {
@@ -1237,7 +1699,10 @@ game.addEventListener("touchmove", e => {
     if (t.identifier === joy.id) {
       let dx = t.clientX - joy.ox, dy = t.clientY - joy.oy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R/d; dy *= R/d; }
       joy.x = dx/R; joy.y = dy/R; joyKnob.style.transform = `translate(${dx}px,${dy}px)`;
-    } else if (t.identifier === look.id) { P.a += (t.clientX - look.lx) * .0065; look.lx = t.clientX; }
+    } else if (t.identifier === look.id) {
+      P.a += (t.clientX - look.lx) * .0065; look.lx = t.clientX;
+      P.pitch = Math.max(-.42, Math.min(.42, P.pitch - (t.clientY - look.ly) * .0035)); look.ly = t.clientY;
+    }
   }
 }, { passive: false });
 function endTouch(e) {
@@ -1248,18 +1713,32 @@ function endTouch(e) {
 }
 game.addEventListener("touchend", endTouch); game.addEventListener("touchcancel", endTouch);
 const fireBtn = $("fireBtn"), reloadBtn = $("reloadBtn");
+$("ultBtn").addEventListener("click", e => { e.stopPropagation(); initAudio(); activateUlt(); });
 fireBtn.addEventListener("touchstart", e => { e.preventDefault(); e.stopPropagation(); initAudio(); fireHeld = true; fireBtn.classList.add("down"); }, { passive: false });
 const fireUp = e => { e.preventDefault(); fireHeld = false; fireBtn.classList.remove("down"); };
 fireBtn.addEventListener("touchend", fireUp); fireBtn.addEventListener("touchcancel", fireUp);
 reloadBtn.addEventListener("touchstart", e => { e.preventDefault(); e.stopPropagation(); if (state === "play") startReload(); reloadBtn.classList.add("down"); }, { passive: false });
 reloadBtn.addEventListener("touchend", e => { e.preventDefault(); reloadBtn.classList.remove("down"); });
 
+/* Damage direction: each arc points at where the hit came from, and keeps pointing there as the player turns. */
+function updateHitMarks(dt) {
+  for (let i = hitMarks.length - 1; i >= 0; i--) {
+    const m = hitMarks[i]; m.t += dt;
+    if (m.t >= m.life) { m.el.remove(); hitMarks.splice(i, 1); continue; }
+    let rel = Math.atan2(m.y - P.y, m.x - P.x) - P.a; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    m.el.style.transform = `translate(-50%,-50%) rotate(${rel}rad)`;
+    m.el.style.opacity = String(Math.min(1, (m.life - m.t) / .5));
+  }
+}
+function clearHitMarks() { while (hitMarks.length) hitMarks.pop().el.remove(); }
+
 /* Loop */
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (state === "play" || state === "over") updateHitMarks(dt);
   if (state === "play") update(dt);
-  else if (state === "menu" || state === "select") { P.a += dt * .15; for (const e of enemies) e.t += dt; }
+  else if (state === "menu" || state === "select" || state === "passsel") { P.a += dt * .15; for (const e of enemies) e.t += dt; }
   else if (state === "over") { for (let i = enemies.length - 1; i >= 0; i--) { const e = enemies[i]; if (e.dying > 0) { e.dying -= dt; if (e.dying <= 0) enemies.splice(i,1); } } P.hurtT -= dt; }
   render(); hud();
   requestAnimationFrame(frame);
@@ -1268,3 +1747,5 @@ addEventListener("resize", resize);
 resize(); reset(); requestAnimationFrame(frame);
 })();
 </script>
+</body>
+</html>
