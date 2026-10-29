@@ -45,6 +45,17 @@ body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:va
 .shbar{height:6px;margin-top:3px}
 .shbar i{background:#6fc3ff}
 .chip.pass{border-color:#ff8a3d;color:#ff8a3d}
+.perk.devil{background:linear-gradient(160deg,#3a1018,var(--card) 70%);border-color:#7a2232}
+.perk.angel{background:linear-gradient(160deg,#3a3420,var(--card) 70%);border-color:#7a6a3a}
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;padding:16px;border-radius:12px;cursor:pointer;font-family:var(--body);color:var(--text)}
+.form b{font:400 30px/1 var(--display)}
+.form p{margin:0;font-size:13px;line-height:1.5}
+.form.devil{background:linear-gradient(160deg,#5a1424,#22101a);border:1px solid #b33a52}
+.form.devil b{color:#ff6b78}
+.form.angel{background:linear-gradient(160deg,#5a4c20,#22201a);border:1px solid #c9b065}
+.form.angel b{color:#ffe9a8}
+.form:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .codebox{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
 .codebox small{font-size:11px;letter-spacing:.2em;color:var(--muted);font-weight:600}
 .codebox b{font:400 44px/1 var(--display);letter-spacing:.18em;color:var(--amber);font-variant-numeric:tabular-nums}
@@ -293,6 +304,17 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
     </div>
   </div>
 
+  <div class="overlay" id="formMenu" hidden>
+    <div class="panel">
+      <div class="eyebrow">각성 · 악마와 천사</div>
+      <h2>무엇으로 변신할까요?</h2>
+      <div class="forms">
+        <button class="form devil" id="formDevil"><b>악마</b><p>8초 동안 공격력 3배. 대신 최대 체력이 절반으로 줄어요.</p><span class="key desk-only">1번 키</span></button>
+        <button class="form angel" id="formAngel"><b>천사</b><p>8초 동안 아주 빨라지고 최대 체력 +50, 체력도 50 회복해요.</p><span class="key desk-only">2번 키</span></button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="perkMenu" hidden>
     <div class="panel wide">
       <div class="eyebrow" id="perkEyebrow">웨이브 1 클리어</div>
@@ -537,6 +559,7 @@ function soldier(kind, frame) {
 SPR.me = {};
 for (const k of ["rifle","shotgun","sniper","smg","pistol","knife","grenade","molotov"]) for (const f of [0, 1]) {
   SPR.me[k + f] = soldier(k, f); SPR.me[k + f + "H"] = tint(SPR.me[k + f], "rgba(255,60,70,.55)");
+  if (!f) { SPR.cl = SPR.cl || {}; SPR.cl[k] = tint(SPR.me[k + f], "rgba(130,150,255,.5)"); }
 }
 
 /* Passive ability sprites */
@@ -679,7 +702,30 @@ const PASSIVES = {
   blades: { name: "회전 칼날", g: "칼", c: "#dfe5ec", desc: "칼날 2개가 내 주위를 빙빙 돌면서 닿는 적을 베요.", ult: "칼날 비", ultDesc: "모든 적 머리 위로 칼날이 떨어져 5초 동안 빠르게 베요", up: "칼날 +1개, 피해 +35%" },
   shield: { name: "보호막",    g: "막", c: "#6fc3ff", desc: "피해를 먼저 막아 주는 보호막이 생겨요. 3초 동안 안 맞으면 다시 차올라요.", ult: "수호천사", ultDesc: "체력을 모두 회복하고 5초 동안 하늘을 날며 무적이 돼요", up: "보호막 +35%" },
   drone:  { name: "지원 드론", g: "드", c: "#7be0a6", desc: "작은 드론이 따라다니며 보이는 적을 자동으로 쏴요.", ult: "드론 군단", ultDesc: "내 주위 360도에 드론 8대가 돌면서 8초 동안 레이저를 번갈아 쏴요", up: "드론 피해 +35%, 연사 +20%" },
+  clone:  { name: "분신",      g: "분", c: "#9fa8ff", desc: "나를 닮은 분신 하나가 옆에서 따라다니며 보이는 적을 쏴요.", ult: "분신술", ultDesc: "6초 동안 분신이 3명 더 나타나 다 같이 빠르게 쏴요", up: "분신 피해 +35%, 연사 +20%" },
+  time:   { name: "시간 조종", g: "시", c: "#e6d48a", desc: "내 주위로 날아오는 적 탄환이 아주 느려지고, 가까이 온 적도 느려져요.", ult: "시간 정지", ultDesc: "5초 동안 우리 편만 빼고 모든 적과 탄환의 시간이 멈춰요", up: "시간이 느려지는 범위 +15%" },
+  duality: { name: "악마와 천사", g: "악", c: "#d64a6a", desc: "웨이브 보상 카드 3장 중 2장이 악마의 거래와 천사의 축복으로 바뀌어요. 악마는 아주 강하지만 대가가 있고, 천사는 대가 없이 조금 강해져요.", ult: "악마 또는 천사", ultDesc: "8초 동안 악마(체력 절반, 공격력 3배)나 천사(아주 빠르고 체력 +50)로 변신해요", up: "" },
 };
+/* Devil deals are strong with a price; angel blessings are milder with none. Values add into D. */
+const DEALS = {
+  devil: [
+    { id: "blood",  name: "피의 계약",  g: "피", gain: { dmg: .8 },   cost: { maxHp: -20 },  text: "모든 무기 피해 +80%",   costText: "최대 체력 -20" },
+    { id: "frenzy", name: "광기",       g: "광", gain: { rate: .5 },  cost: { taken: .25 },  text: "모든 총 연사 속도 +50%", costText: "받는 피해 +25%" },
+    { id: "greed",  name: "탐욕",       g: "탐", gain: { mag: 1 },    cost: { speed: -.12 }, text: "모든 총 탄창 2배",       costText: "이동 속도 -12%" },
+    { id: "gale",   name: "폭풍의 발",  g: "풍", gain: { speed: .4 }, cost: { maxHp: -15 },  text: "이동 속도 +40%",         costText: "최대 체력 -15" },
+    { id: "tyrant", name: "폭군",       g: "폭", gain: { crit: .3 },  cost: { reload: .35 }, text: "치명타 확률 +30% (2.5배 피해)", costText: "장전 시간 +35%" },
+    { id: "glass",  name: "유리 대포",  g: "유", gain: { dmg: 1.2 },  cost: { taken: .5 },   text: "모든 무기 피해 +120%",  costText: "받는 피해 +50%" },
+  ],
+  angel: [
+    { id: "holy",   name: "축복받은 탄환", g: "축", gain: { dmg: .25 },    text: "모든 무기 피해 +25%" },
+    { id: "heal",   name: "치유의 빛",     g: "빛", gain: { regen: 1 },    text: "초당 체력 1 회복" },
+    { id: "wing",   name: "수호의 날개",   g: "날", gain: { taken: -.15 }, text: "받는 피해 -15%" },
+    { id: "light",  name: "가벼운 발걸음", g: "발", gain: { speed: .15 },  text: "이동 속도 +15%" },
+    { id: "plenty", name: "풍요",          g: "풍", gain: { mag: .3 },     text: "모든 총 탄창 +30%" },
+    { id: "life",   name: "생명의 은총",   g: "생", gain: { maxHp: 20 },   text: "최대 체력 +20, 체력 20 회복" },
+  ],
+};
+const D0 = () => ({ dmg: 0, rate: 0, mag: 0, speed: 0, crit: 0, reload: 0, maxHp: 0, taken: 0, regen: 0 });
 const PASSIVE_IDS = Object.keys(PASSIVES);
 const EDEF = {
   grunt:   { sc: .78, hw: .3,  score: 100 },
@@ -702,7 +748,11 @@ function passiveReset() { PS.t = 0; PS.zapT = 1.5; PS.droneT = .5; PS.shield = s
 function auraR() { return (P.passive === "fire" ? 1.8 : 2.4) * (1 + .1 * pLv()); }
 function bladePos(i, n) { const a = PS.t * 3.2 + i * Math.PI * 2 / n; return [P.x + Math.cos(a) * 1.15, P.y + Math.sin(a) * 1.15]; }
 function dronePos() { const a = P.a - .6, bob = Math.sin(PS.t * 3) * .05; return [P.x + Math.cos(a) * .7, P.y + Math.sin(a) * .7, .75 + bob]; }
-const zaps = [];
+const zaps = [], beams = [];
+let timeStopT = 0;
+const clonesN = () => P.ultT > 0 && P.passive === "clone" ? 4 : 1;
+const CLONE_SPOT = [[1.4, -.65], [1.4, .65], [2.1, -1.15], [2.1, 1.15]];
+function clonePos(i) { const [f, r] = CLONE_SPOT[i], ca = Math.cos(P.a), sa = Math.sin(P.a); return [P.x + ca*f - sa*r, P.y + sa*f + ca*r]; }
 function nearestEnemy(x, y, range, skip) {
   let best = null, bd = range;
   for (const e of enemies) { if (e.dying > 0 || (skip && skip.has(e))) continue;
@@ -749,6 +799,18 @@ function updatePassive(dt) {
       else PS.droneT = .2;
     }
   }
+  if (k === "clone") {
+    const n = clonesN(); PS.cloneT = (PS.cloneT || 0) - dt;
+    if (PS.cloneT <= 0) {
+      PS.cloneT = (P.ultT > 0 ? .25 : .6 / (1 + .2 * pLv())) / n;
+      const i = (PS.cloneIdx = ((PS.cloneIdx || 0) + 1) % n), [cx, cy] = clonePos(i), e = nearestEnemy(cx, cy, 9);
+      if (e) { damage(e, 1 * pm, false); beams.push({ x1: cx, y1: cy, z1: .45, x2: e.x, y2: e.y, z2: eLift(e) + EDEF[e.type].sc * .5, t: 0, life: .1, c: "255,225,130" }); tone(900, .04, "square", .03, 400); }
+    }
+  } else if (k === "time") {
+    const r = 2.2 * (1 + .15 * pLv());
+    for (const e of enemies) if (e.dying <= 0 && Math.hypot(e.x - P.x, e.y - P.y) < r) applyFx(e, { slowT: .3 });
+  }
+  for (let i = beams.length - 1; i >= 0; i--) { beams[i].t += dt; if (beams[i].t >= beams[i].life) beams.splice(i, 1); }
   for (let i = zaps.length - 1; i >= 0; i--) { zaps[i].t += dt; if (zaps[i].t >= zaps[i].life) zaps.splice(i, 1); }
 }
 /* ---------- Awakening (passive ultimates) ---------- */
@@ -760,10 +822,15 @@ const ULT_TINT = {
   blades: "radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(230,236,244,.4) 100%)",
   shield: "radial-gradient(ellipse at center, rgba(255,230,140,0) 40%, rgba(255,210,90,.5) 100%)",
   drone: "radial-gradient(ellipse at center, rgba(120,230,170,0) 40%, rgba(90,220,150,.45) 100%)",
+  clone: "radial-gradient(ellipse at center, rgba(150,160,255,0) 40%, rgba(130,140,255,.45) 100%)",
+  time: "radial-gradient(ellipse at center, rgba(230,212,138,0) 45%, rgba(230,212,138,.4) 100%)",
+  dualitydevil: "radial-gradient(ellipse at center, rgba(160,10,30,.1) 30%, rgba(170,10,40,.65) 100%)",
+  dualityangel: "radial-gradient(ellipse at center, rgba(255,240,190,.1) 30%, rgba(255,230,150,.6) 100%)",
 };
 function ultReady() { return P.ult >= P.ultNeed && P.ultT <= 0; }
 function activateUlt() {
   if (state !== "play" || !ultReady()) return;
+  if (P.passive === "duality") { if (!NET.on) state = "form"; fireHeld = false; unlock(); show("formMenu"); return; }
   const k = P.passive; P.ult = 0; P.ultNeed += 5; ULT.tick = 0;
   banner("각성!", PASSIVES[k].ult); sfx.ult();
   if (k === "fire") {
@@ -782,7 +849,22 @@ function activateUlt() {
     P.ultT = 5; P.hp = stat.maxHp(); PS.shield = shieldMax();
   } else if (k === "drone") {
     P.ultT = 8; ULT.lasers = []; ULT.droneIdx = 0;
+  } else if (k === "clone") {
+    P.ultT = 6;
+  } else if (k === "time") {
+    P.ultT = 5;
+    for (const e of enemies) if (e.dying <= 0) applyFx(e, { freeze: 5 });
+    if (isGuest()) netSend({ t: "tstop", d: 5 }); else timeStopT = 5;
   }
+}
+function chooseForm(f) {
+  if (!ultReady() || $("formMenu").hidden) return;
+  P.ult = 0; P.ultNeed += 5; P.ultT = 8; P.form = f;
+  if (f === "devil") { P.hp = Math.min(P.hp, stat.maxHp()); tone(90, .6, "sawtooth", .14, 45); }
+  else { P.hp = Math.min(stat.maxHp(), P.hp + 50); tone(660, .4, "sine", .12, 1320); }
+  banner("각성!", f === "devil" ? "악마 · 공격력 3배" : "천사 · 신속과 생명");
+  if (state === "form") state = "play";
+  show(null); lock();
 }
 function ultDronePos(i) { const a = PS.t * 1.6 + i * Math.PI / 4; return [P.x + Math.cos(a) * 1.3, P.y + Math.sin(a) * 1.3, .85 + Math.sin(PS.t * 4 + i) * .05]; }
 function updateUlt(dt) {
@@ -814,7 +896,7 @@ function updateUlt(dt) {
     if (e) { damage(e, 1.2 * pm, false); ULT.lasers.push({ x1: dx, y1: dy, z1: dz, x2: e.x, y2: e.y, z2: .4, t: 0, life: .12 }); if (i % 2) sfx.drone(); }
   }
   for (let i = ULT.lasers.length - 1; i >= 0; i--) { ULT.lasers[i].t += dt; if (ULT.lasers[i].t >= ULT.lasers[i].life) ULT.lasers.splice(i, 1); }
-  if (P.ultT <= 0) { P.ultT = 0; P.eyeT = .5; ULT.flames = []; ULT.lasers = []; }
+  if (P.ultT <= 0) { P.ultT = 0; P.eyeT = .5; ULT.flames = []; ULT.lasers = []; if (P.form) { P.form = null; P.hp = Math.min(P.hp, stat.maxHp()); } }
 }
 function ultSprites(list) {
   const k = P.passive, now = PS.t, on = P.ultT > 0;
@@ -829,6 +911,8 @@ function ultSprites(list) {
 }
 function passiveSprites(list) {
   const k = P.passive, now = PS.t;
+  if (k === "clone") { const kind = cur === "primary" ? P.gun : cur;
+    for (let i = 0; i < clonesN(); i++) { const [cx, cy] = clonePos(i); if (!wallAt(cx, cy)) list.push({ x: cx, y: cy, tex: SPR.cl[kind], sc: .58, lift: 0 }); } }
   if (k === "fire" || k === "frost") {
     const r = auraR(), n = k === "fire" ? 14 : 12;
     for (let i = 0; i < n; i++) { const a = i * Math.PI * 2 / n + now * (k === "fire" ? .6 : -.4), rr = r * (.75 + .2 * Math.sin(i * 2.3));
@@ -845,16 +929,17 @@ function passiveSprites(list) {
     else list.push({ x: z.x, y: z.y, tex: SPR.spark, sc: .35, lift: .3 });
   }
 }
-let L = {};
+let L = {}, D = D0();
 const scavAmt = () => Math.max(1, Math.round(GUNS[P.gun].res / 30));
-const magSize = d => Math.round(d.mag * (1 + .35 * (L.mag || 0)));
-const reloadTime = d => d.reload * Math.pow(.75, L.reload || 0);
-const fireCd = d => d.cd * Math.pow(.83, L.rate || 0);
-const dmgMult = () => 1 + .35 * (L.dmg || 0);
+const magSize = d => Math.max(1, Math.round(d.mag * (1 + .35 * (L.mag || 0) + D.mag)));
+const reloadTime = d => d.reload * Math.pow(.75, L.reload || 0) * (1 + D.reload);
+const fireCd = d => d.cd * Math.pow(.83, L.rate || 0) / (1 + D.rate);
+const dmgMult = () => (1 + .35 * (L.dmg || 0) + D.dmg) * (P.form === "devil" ? 3 : 1);
+const critChance = () => .15 * (L.crit || 0) + D.crit;
 const blastMult = () => 1 + .25 * (L.blast || 0);
 const stat = {
-  speed: () => 3.3 * (1 + .15 * (L.speed || 0)) * (cur === "knife" ? 1.15 : 1) * (P.ultT > 0 && P.passive === "shield" ? 1.35 : 1),
-  maxHp: () => 100 + 25 * (L.hp || 0),
+  speed: () => 3.3 * Math.max(.4, 1 + .15 * (L.speed || 0) + D.speed) * (cur === "knife" ? 1.15 : 1) * (P.ultT > 0 && P.passive === "shield" ? 1.35 : 1) * (P.form === "angel" ? 1.8 : 1),
+  maxHp: () => { const base = Math.max(20, 100 + 25 * (L.hp || 0) + D.maxHp); return P.form === "devil" ? Math.round(base / 2) : P.form === "angel" ? base + 50 : base; },
 };
 
 /* ---------- Audio ---------- */
@@ -999,7 +1084,7 @@ function banner(text, sub) {
   b.classList.add("show"); clearTimeout(banner.tm); banner.tm = setTimeout(() => b.classList.remove("show"), 1800);
 }
 function reset() {
-  L = {};
+  L = {}; D = D0(); P.form = null; P.deals = {}; timeStopT = 0;
   Object.assign(P, { down: false, hp: 100, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0,
     quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0 });
   cur = "primary"; prevMain = "primary"; clearHitMarks(); zaps.length = 0;
@@ -1017,6 +1102,7 @@ function hurtPlayer(d, sx, sy) {
     PS.shieldIdle = 0; const absorb = Math.min(PS.shield, d); PS.shield -= absorb; d -= absorb;
     if (d <= 0) { P.hurtT = .15; tone(900,.08,"triangle",.06,500); }
   }
+  d *= Math.max(.2, 1 + D.taken);
   if (d > 0) { P.hp = Math.max(0, P.hp - d); P.hurtT = .45; sfx.hurt(); }
   if (sx !== undefined) {
     const el = document.createElement("div"); el.className = "hitmark"; $("hitLayer").appendChild(el);
@@ -1055,7 +1141,7 @@ function hitRay(ang, d) {
   hits.sort((a, b) => a[0] - b[0]);
   const n = Math.min(hits.length, 1 + (d.pierce || 0) + (L.pierce || 0));
   for (let i = 0; i < n; i++) {
-    const dist = hits[i][0] - Math.max(0, minT - .1), e = hits[i][1], crit = L.crit && Math.random() < .15*L.crit;
+    const dist = hits[i][0] - Math.max(0, minT - .1), e = hits[i][1], crit = Math.random() < critChance();
     damage(e, d.dmg * dmgMult() * (crit ? 2.5 : 1) * (dist > d.falloff ? .35 : 1), true);
     moveEnt(e, e.x + ca*.08*d.dmg, e.y + sa*.08*d.dmg, .24);
   }
@@ -1188,7 +1274,7 @@ function update(dt) {
   P.cd -= dt; P.flash -= dt; P.kick = Math.max(0, P.kick - dt*7); P.hurtT -= dt; P.hitT -= dt;
   P.swapT = Math.max(0, P.swapT - dt); P.knifeT = Math.max(0, P.knifeT - dt); P.throwT = Math.max(0, P.throwT - dt);
   P.shakeT -= dt; P.noteT -= dt;
-  if (L.regen) P.hp = Math.min(stat.maxHp(), P.hp + L.regen*dt);
+  if (L.regen || D.regen) P.hp = Math.min(stat.maxHp(), P.hp + ((L.regen || 0) + D.regen) * dt);
   if (P.reloadT > 0 && isGun(cur)) { P.reloadT -= dt;
     if (P.reloadT <= 0) { P.reloadT = 0; const a = ammo[cur], take = Math.min(magSize(gunDef(cur)) - a.mag, a.res); a.mag += take; a.res -= take; sfx.reloaded(); } }
   if (P.autoBackT > 0) { P.autoBackT -= dt; if (P.autoBackT <= 0) switchTo(prevMain); }
@@ -1249,7 +1335,14 @@ function update(dt) {
   // enemy fireballs
   updatePassive(dt); updateUlt(dt);
   P.eye += (P.eyeT - P.eye) * Math.min(1, dt * 4);
-  for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.x += s.vx*dt; s.y += s.vy*dt; s.z += (s.vz || 0)*dt; s.life -= dt;
+  if (timeStopT > 0) timeStopT -= dt;
+  const slowers = [];
+  if (P.passive === "time" && !P.down) slowers.push([P.x, P.y, 3.5 * (1 + .15 * pLv())]);
+  if (NET.on) for (const g of mates()) if (g.pa === "time" && !g.down) slowers.push([g.x, g.y, 3.5 * (1 + .15 * (g.pl || 0))]);
+  for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i];
+    let sf = timeStopT > 0 ? 0 : 1;
+    if (sf) for (const [tx, ty, tr] of slowers) if (Math.hypot(s.x - tx, s.y - ty) < tr) { sf = .3; break; }
+    const sdt = dt * sf; s.x += s.vx*sdt; s.y += s.vy*sdt; s.z += (s.vz || 0)*sdt; s.life -= sdt;
     if (s.life <= 0 || s.z <= 0 || (s.z < 1 && wallAt(s.x, s.y))) { shots.splice(i, 1); continue; }
     if (s.z < 1.05) { const rr = s.acid ? .45 : .35, dmg = (s.acid ? 9 : 10) + Math.min(P.wave, 8);
       if (!P.down && Math.hypot(s.x - P.x, s.y - P.y) < rr) { shots.splice(i, 1); hurtPlayer(dmg, s.x - s.vx, s.y - s.vy); continue; }
@@ -1346,14 +1439,19 @@ function pickPassive(id) {
 let offer = [];
 function openPerks() {
   state = "perk"; fireHeld = false; joy.id = look.id = null; $("joyBase").style.display = "none"; unlock();
-  const pool = PERKS.filter(p => (L[p.id] || 0) < p.max);
+  const duo = P.passive === "duality";
+  const pool = PERKS.filter(p => (L[p.id] || 0) < p.max && !(duo && p.id === "passive"));
   offer = [];
+  if (duo) for (const side of ["devil", "angel"]) { const d = DEALS[side][(Math.random() * DEALS[side].length) | 0]; offer.push({ ...d, side, deal: true }); }
   while (offer.length < 3 && pool.length) offer.push(pool.splice((Math.random()*pool.length)|0, 1)[0]);
   $("perkEyebrow").textContent = `웨이브 ${P.wave} 클리어 · 점수 ${P.score.toLocaleString()}`;
   $("nextZone").textContent = `다음 구간: ${ZONES[P.wave % ZONES.length].name} · 웨이브 ${P.wave + 1} · 탄약과 투척 무기를 다시 채워 드려요`;
   const list = $("perkList"); list.textContent = "";
   offer.forEach((p, i) => {
-    const lv = (L[p.id] || 0) + 1, b = card(p.c, p.g, p.name, lv === 1 ? "새 특성" : `레벨 ${lv - 1} → ${lv}`, p.d(lv), `${i+1}번 키`);
+    const lv = (L[p.id] || 0) + 1, b = p.deal
+      ? card(p.side === "devil" ? "#d64a6a" : "#ffe9a8", p.g, p.name, p.side === "devil" ? "악마의 거래" : "천사의 축복", p.text + (p.costText ? " · 대가: " + p.costText : " · 대가 없음"), `${i+1}번 키`)
+      : card(p.c, p.g, p.name, lv === 1 ? "새 특성" : `레벨 ${lv - 1} → ${lv}`, p.d(lv), `${i+1}번 키`);
+    if (p.deal) b.classList.add(p.side);
     b.id = "perk-" + i; b.onclick = () => choosePerk(i);
     list.appendChild(b);
   });
@@ -1361,8 +1459,14 @@ function openPerks() {
 }
 function choosePerk(i) {
   if (state !== "perk" || !offer[i]) return;
-  const p = offer[i]; L[p.id] = (L[p.id] || 0) + 1; sfx.perk();
-  if (p.id === "hp") P.hp = stat.maxHp();
+  const p = offer[i]; sfx.perk();
+  if (p.deal) {
+    for (const src of [p.gain, p.cost || {}]) for (const k in src) D[k] += src[k];
+    P.deals = P.deals || {}; P.deals[p.id] = (P.deals[p.id] || 0) + 1;
+    if (p.gain.maxHp) P.hp += p.gain.maxHp;
+    P.hp = Math.min(P.hp, stat.maxHp());
+    if (p.side === "devil") tone(110, .4, "sawtooth", .1, 55);
+  } else { L[p.id] = (L[p.id] || 0) + 1; if (p.id === "hp") P.hp = stat.maxHp(); }
   if (isGuest()) { netSend({ t: "perkDone" }); waitScreen("동료들이 특성을 고르는 중…", "모두 고르면 바로 다음 구간으로 넘어가요."); return; }
   if (isHost()) { NET.myPerk = true; if (!guests().every(g => g.perk)) { waitScreen("동료들이 특성을 고르는 중…", "모두 고르면 바로 다음 구간으로 넘어가요."); return; } }
   beginNextWave();
@@ -1384,6 +1488,7 @@ function ownedChips(el) {
   el.textContent = "";
   const g = document.createElement("span"); g.className = "chip gun"; g.textContent = GUNS[P.gun].name; el.appendChild(g);
   const ps = document.createElement("span"); ps.className = "chip pass"; ps.textContent = PASSIVES[P.passive].name + (pLv() ? ` ${pLv() + 1}` : ""); el.appendChild(ps);
+  for (const k of ["devil", "angel"]) for (const d of DEALS[k]) { const n = P.deals && P.deals[d.id]; if (n) { const c = document.createElement("span"); c.className = "chip"; c.textContent = `${d.name} ${n}`; el.appendChild(c); } }
   for (const p of PERKS) if (L[p.id]) { const c = document.createElement("span"); c.className = "chip"; c.textContent = `${p.name} ${L[p.id]}`; el.appendChild(c); }
 }
 
@@ -1497,13 +1602,13 @@ function render() {
       ctx.drawImage(s.tex, Math.min(63, ((x - left)/w*64) | 0), 0, 1, 64, x, top, 1, h);
     }
   }
-  if (ULT.lasers.length) {
+  if (ULT.lasers.length || beams.length) {
     const proj3 = (x, y, z) => { const sx = x - ox, sy = y - oy, tx = inv*(dirY*sx - dirX*sy), ty = inv*(-plY*sx + plX*sy);
       if (ty < .1) return null; const unit = proj/ty; return [(W/2)*(1 + tx/ty), hz + unit*P.eye - z*unit]; };
     ctx.lineCap = "round";
-    for (const l of ULT.lasers) { const a = proj3(l.x1, l.y1, l.z1), b = proj3(l.x2, l.y2, l.z2); if (!a || !b) continue;
+    for (const l of [...ULT.lasers, ...beams]) { const a = proj3(l.x1, l.y1, l.z1), b = proj3(l.x2, l.y2, l.z2); if (!a || !b) continue;
       const f = 1 - l.t / l.life;
-      ctx.strokeStyle = `rgba(90,255,170,${.45*f})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      ctx.strokeStyle = `rgba(${l.c || "90,255,170"},${.45*f})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       ctx.strokeStyle = `rgba(230,255,240,${f})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
   }
   for (const mate of mateList) {
@@ -1673,7 +1778,7 @@ function hud() {
     const cs = coopStatusText();
     if (cs) st = cs;
     else if (P.noteT > 0) st = P.note;
-    else if (P.ultT > 0 && P.passive !== "blades") st = `각성 · ${PASSIVES[P.passive].ult} ${Math.ceil(P.ultT)}초` + (P.passive === "shield" ? " · 비행 중 무적" : "");
+    else if (P.ultT > 0 && P.passive !== "blades") st = `각성 · ${P.form ? (P.form === "devil" ? "악마" : "천사") : PASSIVES[P.passive].ult} ${Math.ceil(P.ultT)}초` + (P.passive === "shield" ? " · 비행 중 무적" : "");
     else if (P.reloadT > 0) st = "장전 중…";
     else if (isGun(cur)) {
       const a = ammo[cur], size = magSize(gunDef(cur));
@@ -1690,7 +1795,9 @@ function hud() {
   ub.classList.toggle("ready", ultReady());
   setText("ultPct", P.ultT > 0 ? Math.ceil(P.ultT) + "초" : ultReady() ? (isTouch ? "누르기" : "X 키") : `${up}/${P.ultNeed}`);
   const tint = $("ultTint");
-  if (tint.dataset.k !== P.passive) { tint.dataset.k = P.passive; tint.style.background = ULT_TINT[P.passive]; }
+  const tk = P.passive + (P.form || ""); if (tint.dataset.k !== tk) { tint.dataset.k = tk; tint.style.background = ULT_TINT[tk] || ""; }
+  const gray = state === "play" && (isGuest() ? NET.ts : timeStopT > 0) ? "grayscale(.85) contrast(1.15)" : "";
+  if (cvs.style.filter !== gray) cvs.style.filter = gray;
   tint.style.opacity = P.ultT > 0 && state === "play" ? "1" : "0";
   if (isTouch) setText("fireBtn", isGun(cur) ? "발사" : cur === "knife" ? "베기" : "던지기");
   $("vignette").style.opacity = P.hurtT > 0 ? Math.min(1, P.hurtT/.45) : (P.hp < mh*.3 && state === "play" ? .25 + Math.sin(performance.now()/200)*.1 : 0);
@@ -1890,7 +1997,7 @@ function sendSnapshot() {
   const pl = [["h", r2(P.x), r2(P.y), r2(P.a), myKind(), P.flash > 0 ? 1 : 0, P.down ? 1 : 0, r2(P.eye)]];
   for (const g of guests()) if (g.x !== undefined) pl.push([g.id, g.x, g.y, g.a, g.k, g.f, g.down ? 1 : 0, g.eye]);
   const rv = {}; for (const k in NET.rev) if (NET.rev[k] > 0) rv[k] = r2(NET.rev[k]);
-  netSend({ t: "s", w: P.wave, sc: P.score, n: teamSize(), rv, pl,
+  netSend({ t: "s", w: P.wave, sc: P.score, n: teamSize(), rv, pl, ts: timeStopT > 0 ? 1 : 0,
     e: enemies.map(e => [e.id, TYPES.indexOf(e.type), r2(e.x), r2(e.y), r2(e.z || 0), r2(e.hp), e.maxHp, flags(e), e.dying > 0 ? 1 : 0, e.saw ? r2(e.saw.t) : -9]),
     s: shots.map(o => [r2(o.x), r2(o.y), r2(o.z), o.acid ? 1 : 0]),
     it: items.map(o => [o.type === "health" ? 0 : 1, r2(o.x), r2(o.y)]),
@@ -1904,7 +2011,7 @@ function firePts(x, y, r) {
   return pts;
 }
 function applySnapshot(m) {
-  P.wave = m.w; P.score = m.sc; NET.rev = m.rv || {}; NET.lobbyN = m.n || NET.lobbyN;
+  P.wave = m.w; P.score = m.sc; NET.rev = m.rv || {}; NET.lobbyN = m.n || NET.lobbyN; NET.ts = !!m.ts;
   const prev = new Map(NET.others.map(o => [o.id, o])), others = [];
   for (const [id, x, y, a, k, f, down, eye] of m.pl) {
     if (id === NET.myId) continue;
@@ -1957,11 +2064,12 @@ function onNet(m, from) {
     case "ready": if (g) { g.ready = true; checkAllReady(); } break;
     case "i": if (g) {
       g.mv = g.x !== undefined && Math.hypot(m.x - g.x, m.y - g.y) > .01;
-      Object.assign(g, { x: m.x, y: m.y, a: m.a, k: m.k, f: m.f, down: !!m.down, full: !!m.full, eye: m.eye });
+      Object.assign(g, { x: m.x, y: m.y, a: m.a, k: m.k, f: m.f, down: !!m.down, full: !!m.full, eye: m.eye, pa: m.pa, pl: m.pl });
       if (g.down) checkAllDown();
       break; }
     case "fx": if (g) for (const [id, dmg, slowT, burnT, burnDps, freeze, saw] of m.l) {
       const e = enemies.find(q => q.id === id); if (e) applyFx(e, { dmg, slowT, burnT, burnDps, freeze, saw, src: from }); } break;
+    case "tstop": if (g) timeStopT = Math.max(timeStopT, m.d || 5); break;
     case "throw": if (g) throws.push({ kind: m.k, x: m.x, y: m.y, vx: m.vx, vy: m.vy, z: .45, vz: 2.3, fuse: 1.6, t: 0, src: from, bm: m.bm, dm: m.dm, bl: m.bl }); break;
     case "perkDone": if (g) { g.perk = true; checkAllPerks(); } break;
   }
@@ -1980,7 +2088,7 @@ function netTick(dt) {
     for (const e of enemies) { if (e.tx === undefined) continue; const k = Math.min(1, dt * 12); e.x += (e.tx - e.x) * k; e.y += (e.ty - e.y) * k;
       if (e.dying > 0) e.dying = Math.max(.02, e.dying - dt); }
     if (NET.sendT <= 0) { NET.sendT = .05;
-      netSend({ t: "i", x: r2(P.x), y: r2(P.y), a: r2(P.a), k: myKind(), f: P.flash > 0 ? 1 : 0, down: P.down ? 1 : 0, full: P.hp >= stat.maxHp() ? 1 : 0, eye: r2(P.eye) }); }
+      netSend({ t: "i", pa: P.passive, pl: pLv(), x: r2(P.x), y: r2(P.y), a: r2(P.a), k: myKind(), f: P.flash > 0 ? 1 : 0, down: P.down ? 1 : 0, full: P.hp >= stat.maxHp() ? 1 : 0, eye: r2(P.eye) }); }
     if (NET.qT <= 0) { NET.qT = .1; const ids = Object.keys(NET.q);
       if (ids.length) { netSend({ t: "fx", l: ids.map(id => { const q = NET.q[id]; return [+id, r2(q.dmg || 0), q.slowT || 0, q.burnT || 0, r2(q.burnDps || 0), q.freeze || 0, r2(q.saw || 0)]; }) }); NET.q = {}; } }
     return;
@@ -2009,7 +2117,7 @@ function coopStatusText() {
 }
 
 /* ---------- Flow control ---------- */
-function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu","passMenu","coopMenu","waitMenu"].forEach(m => $(m).hidden = m !== id); }
+function show(id) { ["menu","pauseMenu","overMenu","perkMenu","gunMenu","passMenu","coopMenu","waitMenu","formMenu"].forEach(m => $(m).hidden = m !== id); }
 function startGame() {
   initAudio(); reset(); state = "play"; show(null);
   const n = teamSize();
@@ -2041,7 +2149,7 @@ function gameOver() {
 let wasLocked = false;
 function lock() { if (isTouch) return; try { const p = cvs.requestPointerLock && cvs.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
 function unlock() { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} }
-document.addEventListener("pointerlockchange", () => { const l = document.pointerLockElement === cvs; if (!l && wasLocked && state === "play") pause(); wasLocked = l; });
+document.addEventListener("pointerlockchange", () => { const l = document.pointerLockElement === cvs; if (!l && wasLocked && state === "play" && $("formMenu").hidden) pause(); wasLocked = l; });
 
 $("startBtn").onclick = () => { if (NET.on) closePeer(); openGunSelect(); };
 $("againBtn").onclick = () => { NET.ready = false; openGunSelect(); };
@@ -2050,6 +2158,8 @@ $("coopBtn").onclick = openCoop;
 $("coopBack").onclick = () => { closePeer(); state = "menu"; show("menu"); };
 $("hostBtn").onclick = hostRoom;
 $("coopStartBtn").onclick = startCoopGame;
+$("formDevil").onclick = () => chooseForm("devil");
+$("formAngel").onclick = () => chooseForm("angel");
 $("joinBtn").onclick = joinRoom;
 $("joinCode").addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") joinRoom(); });
 $("resumeBtn").onclick = resume;
@@ -2068,6 +2178,7 @@ addEventListener("keydown", e => {
   if (state === "select" && num >= 1 && num <= 4) { pickGun(PRIMARY_IDS[num - 1]); return; }
   if (state === "passsel" && e.code.startsWith("Digit")) { const n = +e.code.slice(5); if (n >= 1 && n <= PASSIVE_IDS.length) pickPassive(PASSIVE_IDS[n - 1]); return; }
   if (state === "perk" && num >= 1 && num <= 3) { choosePerk(num - 1); return; }
+  if (!$("formMenu").hidden && (num === 1 || num === 2)) { chooseForm(num === 1 ? "devil" : "angel"); return; }
   if (e.code === "Escape" || e.code === "KeyP") { state === "play" && !NET.paused ? pause() : resume(); return; }
   if (state === "play") {
     if (num) { switchTo(SLOTS[num - 1]); return; }
