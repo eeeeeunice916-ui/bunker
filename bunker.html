@@ -119,6 +119,17 @@ body.touch .desk-only{display:none}
   border:2px solid rgba(255,255,255,.35);background:rgba(20,25,36,.7);color:#fff;font:16px/1 var(--display)}
 #reloadBtn.down{background:rgba(255,178,30,.7)}
 #ultTint{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s}
+#stealthTint{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;background:radial-gradient(ellipse at center,rgba(20,10,40,0) 35%,rgba(30,15,60,.7) 100%)}
+#skillBtn{position:absolute;right:calc(max(30px,env(safe-area-inset-right,0px)) + 80px);bottom:calc(132px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.3);padding:4px;cursor:pointer;color:#fff;font:14px/1 var(--display);background:rgba(20,25,36,.78)}
+#skillBtn span{display:grid;place-items:center;align-content:center;width:100%;height:100%;border-radius:50%;background:rgba(20,25,36,.9)}
+#skillBtn b{font-weight:400}
+#skillBtn small{display:block;font:600 9px/1 var(--body);color:#c9d0de;margin-top:2px}
+#skillBtn.ready{border-color:#8a7cff;box-shadow:0 0 12px rgba(138,124,255,.7)}
+#skillBtn.active span{background:#8a7cff;color:#120c24}
+#skillBtn.active small{color:#120c24}
+body.touch.portrait #skillBtn{bottom:calc(192px + env(safe-area-inset-bottom,0px))}
+body:not(.touch) #skillBtn{bottom:calc(22px + env(safe-area-inset-bottom,0px));right:max(100px,env(safe-area-inset-right,0px))}
 #ultBtn{position:absolute;right:max(30px,env(safe-area-inset-right,0px));bottom:calc(126px + env(safe-area-inset-bottom,0px));width:70px;height:70px;border-radius:50%;
   border:2px solid rgba(255,255,255,.35);padding:5px;cursor:pointer;color:#fff;font:15px/1 var(--display);
   background:conic-gradient(var(--uc,#ffb21e) calc(var(--up,0) * 1%), rgba(20,25,36,.78) 0)}
@@ -195,6 +206,7 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
   <canvas id="view" aria-label="게임 화면"></canvas>
   <div id="vignette"></div>
   <div id="ultTint"></div>
+  <div id="stealthTint"></div>
   <div id="hitLayer"></div>
   <div class="cross" id="cross"></div>
   <div id="status"></div>
@@ -218,6 +230,7 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
   </div>
 
   <div id="wbar" hidden></div>
+  <button id="skillBtn" hidden aria-label="은신"><span><b>은신</b><small id="skillTxt">C 키</small></span></button>
   <button id="ultBtn" hidden aria-label="각성"><span><b>각성</b><small id="ultPct">0/20</small></span></button>
 
   <div class="touch-only" id="touchUI" hidden>
@@ -239,6 +252,7 @@ kbd{font-family:var(--body);font-size:11px;font-weight:600;min-width:24px;paddin
         <dt><kbd>G</kbd><kbd>F</kbd></dt><dd>수류탄 · 화염병 바로 던지기</dd>
         <dt><kbd>R</kbd></dt><dd>장전</dd>
         <dt><kbd>X</kbd></dt><dd>각성 (게이지가 가득 차면)</dd>
+        <dt><kbd>C</kbd></dt><dd>은신 (닌자 패시브)</dd>
         <dt><kbd>V</kbd></dt><dd>1인칭 · 3인칭 바꾸기</dd>
         <dt><kbd>Esc</kbd></dt><dd>일시정지</dd>
       </dl>
@@ -562,6 +576,12 @@ for (const k of ["rifle","shotgun","sniper","smg","pistol","knife","grenade","mo
   if (!f) { SPR.cl = SPR.cl || {}; SPR.cl[k] = tint(SPR.me[k + f], "rgba(130,150,255,.5)"); }
 }
 
+SPR.kunai = canvas64(g => {
+  g.strokeStyle = "#2a2f38"; g.lineWidth = 3; g.beginPath(); g.arc(32, 52, 5, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#3a2a4a"; g.fillRect(29, 34, 6, 14);
+  g.fillStyle = "#c9d1db"; poly(g, [[32, 6], [39, 26], [32, 34], [25, 26]]);
+  g.fillStyle = "#eef2f6"; poly(g, [[32, 6], [32, 34], [25, 26]]);
+});
 /* Passive ability sprites */
 SPR.frost = canvas64(g => {
   g.strokeStyle = "rgba(200,240,255,.95)"; g.lineWidth = 3; g.lineCap = "round";
@@ -670,7 +690,11 @@ const SLOT_NAME = { pistol: "권총", knife: "칼", grenade: "수류탄", moloto
 const isGun = s => s === "primary" || s === "pistol";
 const isThrow = s => s === "grenade" || s === "molotov";
 const gunDef = s => s === "primary" ? GUNS[P.gun] : GUNS.pistol;
-const slotName = s => s === "primary" ? GUNS[P.gun].name : SLOT_NAME[s];
+const isNinja = () => P.passive === "ninja";
+const katanaOn = () => isNinja() && P.ultT > 0;
+const slotName = s => s === "primary" ? (isNinja() ? "쿠나이" : GUNS[P.gun].name) : SLOT_NAME[s];
+/* Which body sprite / net kind the player shows: ninjas hold a blade. */
+function spriteKind() { if (isNinja() && (cur === "primary" || katanaOn())) return "knife"; return cur === "primary" ? P.gun : cur; }
 
 /* ---------- Perks ---------- */
 const PERKS = [
@@ -704,6 +728,7 @@ const PASSIVES = {
   drone:  { name: "지원 드론", g: "드", c: "#7be0a6", desc: "작은 드론이 따라다니며 보이는 적을 자동으로 쏴요.", ult: "드론 군단", ultDesc: "내 주위 360도에 드론 8대가 돌면서 8초 동안 레이저를 번갈아 쏴요", up: "드론 피해 +35%, 연사 +20%" },
   clone:  { name: "분신",      g: "분", c: "#9fa8ff", desc: "나를 닮은 분신 하나가 옆에서 따라다니며 보이는 적을 쏴요.", ult: "분신술", ultDesc: "6초 동안 분신이 3명 더 나타나 다 같이 빠르게 쏴요", up: "분신 피해 +35%, 연사 +20%" },
   time:   { name: "시간 조종", g: "시", c: "#e6d48a", desc: "내 주위로 날아오는 적 탄환이 아주 느려지고, 가까이 온 적도 느려져요.", ult: "시간 정지", ultDesc: "5초 동안 우리 편만 빼고 모든 적과 탄환의 시간이 멈춰요", up: "시간이 느려지는 범위 +15%" },
+  ninja:  { name: "닌자",      g: "닌", c: "#8a7cff", desc: "총을 못 쓰는 대신 강력한 쿠나이를 무한으로 던져요(저격총보다 2배 빠르게). 은신 버튼(컴퓨터는 C키)을 누르면 5초 동안 숨어서 적이 나를 놓쳐요. 은신이 끝나고 5초 뒤 다시 쓸 수 있어요.", ult: "그림자 검무", ultDesc: "15초 동안 은신이 계속되고 카타나를 꺼내요. 카타나는 보스를 빼고 모든 적을 한 방에 베어요", up: "쿠나이 피해 +35%, 은신 대기 시간 -1초" },
   duality: { name: "악마와 천사", g: "악", c: "#d64a6a", desc: "웨이브 보상 카드 3장 중 2장이 악마의 거래와 천사의 축복으로 바뀌어요. 악마는 아주 강하지만 대가가 있고, 천사는 대가 없이 조금 강해져요.", ult: "악마 또는 천사", ultDesc: "8초 동안 악마(체력 절반, 공격력 3배)나 천사(아주 빠르고 체력 +50)로 변신해요", up: "" },
 };
 /* Devil deals are strong with a price; angel blessings are milder with none. Values add into D. */
@@ -748,7 +773,7 @@ function passiveReset() { PS.t = 0; PS.zapT = 1.5; PS.droneT = .5; PS.shield = s
 function auraR() { return (P.passive === "fire" ? 1.8 : 2.4) * (1 + .1 * pLv()); }
 function bladePos(i, n) { const a = PS.t * 3.2 + i * Math.PI * 2 / n; return [P.x + Math.cos(a) * 1.15, P.y + Math.sin(a) * 1.15]; }
 function dronePos() { const a = P.a - .6, bob = Math.sin(PS.t * 3) * .05; return [P.x + Math.cos(a) * .7, P.y + Math.sin(a) * .7, .75 + bob]; }
-const zaps = [], beams = [];
+const zaps = [], beams = [], kunais = [];
 let timeStopT = 0;
 const clonesN = () => P.ultT > 0 && P.passive === "clone" ? 4 : 1;
 const CLONE_SPOT = [[1.4, -.65], [1.4, .65], [2.1, -1.15], [2.1, 1.15]];
@@ -822,6 +847,7 @@ const ULT_TINT = {
   blades: "radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(230,236,244,.4) 100%)",
   shield: "radial-gradient(ellipse at center, rgba(255,230,140,0) 40%, rgba(255,210,90,.5) 100%)",
   drone: "radial-gradient(ellipse at center, rgba(120,230,170,0) 40%, rgba(90,220,150,.45) 100%)",
+  ninja: "radial-gradient(ellipse at center, rgba(40,20,80,0) 40%, rgba(60,30,120,.5) 100%)",
   clone: "radial-gradient(ellipse at center, rgba(150,160,255,0) 40%, rgba(130,140,255,.45) 100%)",
   time: "radial-gradient(ellipse at center, rgba(230,212,138,0) 45%, rgba(230,212,138,.4) 100%)",
   dualitydevil: "radial-gradient(ellipse at center, rgba(160,10,30,.1) 30%, rgba(170,10,40,.65) 100%)",
@@ -849,6 +875,8 @@ function activateUlt() {
     P.ultT = 5; P.hp = stat.maxHp(); PS.shield = shieldMax();
   } else if (k === "drone") {
     P.ultT = 8; ULT.lasers = []; ULT.droneIdx = 0;
+  } else if (k === "ninja") {
+    P.ultT = 15; P.stealthT = 15; P.stealthCd = 0; P.reloadT = 0;
   } else if (k === "clone") {
     P.ultT = 6;
   } else if (k === "time") {
@@ -1086,7 +1114,8 @@ function banner(text, sub) {
 function reset() {
   L = {}; D = D0(); P.form = null; P.deals = {}; timeStopT = 0;
   Object.assign(P, { down: false, hp: 100, score: 0, kills: 0, wave: 0, cd: 0, flash: 0, kick: 0, hurtT: 0, hitT: 0, swapT: 0, knifeT: 0, throwT: 0,
-    quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0 });
+    quickKind: null, latch: false, autoBackT: 0, shakeT: 0, noteT: 0, stealthT: 0, stealthCd: 0 });
+  kunais.length = 0;
   cur = "primary"; prevMain = "primary"; clearHitMarks(); zaps.length = 0;
   clearT = -1; fireHeld = false; loadZone(0); refillAll(); passiveReset(); P.pitch = 0; P.ultNeed = 20; P.ult = 0; P.ultT = 0; P.eye = P.eyeT = .5; ULT.flames = []; ULT.lasers = [];
   if (isGuest()) { P.wave = 1; const sx = P.x - Math.sin(P.a) * .9, sy = P.y + Math.cos(P.a) * .9; if (freeAt(sx, sy, .25)) { P.x = sx; P.y = sy; } }
@@ -1148,7 +1177,7 @@ function hitRay(ang, d) {
   return n > 0;
 }
 function startReload() {
-  if (!isGun(cur) || P.reloadT > 0) return;
+  if (!isGun(cur) || P.reloadT > 0 || (isNinja() && cur === "primary")) return;
   const a = ammo[cur], d = gunDef(cur);
   if (a.mag >= magSize(d) || a.res <= 0) return;
   P.reloadT = P.reloadMax = reloadTime(d); sfx.reload();
@@ -1212,6 +1241,8 @@ function shatter(x, y, o = {}) {
 }
 function useWeapon() {
   if (P.swapT > 0 || P.cd > 0) return;
+  if (katanaOn()) { katanaSlash(); return; }
+  if (isNinja() && cur === "primary") { throwKunai(); return; }
   if (isGun(cur)) shootGun();
   else if (cur === "knife") knifeAttack();
   else if (!P.latch) {
@@ -1221,6 +1252,7 @@ function useWeapon() {
 }
 function switchTo(slot) {
   if (state !== "play" || slot === cur) return;
+  if (slot === "pistol" && isNinja()) { note("닌자는 총을 쓸 수 없어요"); return; }
   if (isThrow(slot) && counts[slot] <= 0) { note(`${SLOT_NAME[slot]}이 없어요. 다음 웨이브에 다시 채워져요`); return; }
   P.reloadT = 0; cur = slot; P.swapT = .22; P.autoBackT = 0; P.latch = true;
   if (!isThrow(slot)) prevMain = slot;
@@ -1228,7 +1260,7 @@ function switchTo(slot) {
 }
 function cycle(dir) {
   let i = SLOTS.indexOf(cur);
-  for (let k = 0; k < SLOTS.length; k++) { i = (i + dir + SLOTS.length) % SLOTS.length; const s = SLOTS[i]; if (!isThrow(s) || counts[s] > 0) { switchTo(s); return; } }
+  for (let k = 0; k < SLOTS.length; k++) { i = (i + dir + SLOTS.length) % SLOTS.length; const s = SLOTS[i]; if ((!isThrow(s) || counts[s] > 0) && !(s === "pistol" && isNinja())) { switchTo(s); return; } }
 }
 function quickThrow(kind) {
   if (state !== "play" || P.swapT > 0 || P.cd > 0) return;
@@ -1236,9 +1268,55 @@ function quickThrow(kind) {
   throwIt(kind, true);
 }
 
+/* Ninja: kunai fly as real projectiles (twice the sniper's fire rate), the katana one-shots everything but bosses. */
+function throwKunai() {
+  P.cd = GUNS.sniper.cd / 2 * Math.pow(.83, L.rate || 0) / (1 + D.rate); P.kick = .8; P.knifeT = .16;
+  tone(1400, .06, "triangle", .05, 500); noise(.08, .12, 4000, "highpass");
+  const o = tp ? CAM : P, slope = P.pitch * H / proj, n = 1 + (L.multi || 0);
+  for (let k = 0; k < n; k++) {
+    const a = P.a + (n > 1 ? (k - (n - 1) / 2) * .05 : 0), ca = Math.cos(a), sa = Math.sin(a);
+    const t0 = Math.max(.3, (P.x - o.x)*ca + (P.y - o.y)*sa + .3), sp = 22;
+    kunais.push({ x: o.x + ca*t0, y: o.y + sa*t0, z: P.eye + slope*t0 - .05, vx: ca*sp, vy: sa*sp, vz: slope*sp, life: 1.2, hit: new Set(), pierce: 1 + (L.pierce || 0) });
+  }
+}
+function updateKunais(dt) {
+  for (let i = kunais.length - 1; i >= 0; i--) {
+    const k = kunais[i]; k.life -= dt; let dead = k.life <= 0;
+    for (let st = 0; st < 4 && !dead; st++) {
+      k.x += k.vx*dt/4; k.y += k.vy*dt/4; k.z += k.vz*dt/4;
+      if (k.z <= 0 || (k.z < 1 && wallAt(k.x, k.y))) { dead = true; break; }
+      for (const e of enemies) {
+        if (e.dying > 0 || k.hit.has(e)) continue;
+        const D2 = EDEF[e.type], lo = eLift(e), pad = D2.pad || .1;
+        if (Math.hypot(e.x - k.x, e.y - k.y) > D2.hw + .1 || k.z < lo - pad || k.z > lo + D2.sc + pad) continue;
+        k.hit.add(e); const crit = Math.random() < critChance();
+        damage(e, 4 * dmgMult() * pMult() * (crit ? 2.5 : 1), true); P.hitT = .12; sfx.hit();
+        if (--k.pierce < 0) { dead = true; break; }
+      }
+    }
+    if (dead) kunais.splice(i, 1);
+  }
+}
+function katanaSlash() {
+  P.cd = .3; P.knifeT = .28; noise(.16, .3, 2500, "bandpass"); tone(300, .12, "sawtooth", .05, 120);
+  let any = false;
+  for (const e of enemies) { if (e.dying > 0) continue;
+    const dx = e.x - P.x, dy = e.y - P.y, dist = Math.hypot(dx, dy);
+    if (dist > (e.type === "boss" ? 2.4 : 2.1)) continue;
+    let da = Math.atan2(dy, dx) - P.a; da = Math.atan2(Math.sin(da), Math.cos(da));
+    if (Math.abs(da) > .95 || (!isAir(e) && !los(P.x, P.y, e.x, e.y))) continue;
+    applyFx(e, { dmg: e.type === "boss" ? 25 * dmgMult() : 99999 }); any = true;
+  }
+  if (any) { P.hitT = .15; sfx.stab(); P.shakeT = .08; }
+}
+function activateStealth() {
+  if (state !== "play" || !isNinja() || P.down || P.stealthT > 0 || P.stealthCd > 0) return;
+  P.stealthT = 5; noise(.4, .15, 900); tone(300, .3, "sine", .06, 120);
+}
+
 /* Flying bats circle above the player, over the walls, and drop acid from above. */
 function updateFlyer(e, dt, slow) {
-  const T = pickTarget(e);
+  const T = pickTarget(e); if (!T) return;
   e.orbit += dt * .3;
   const tx = T.x + Math.cos(e.orbit) * 1.7, ty = T.y + Math.sin(e.orbit) * 1.7;
   const mx = tx - e.x, my = ty - e.y, md = Math.hypot(mx, my), sp = Math.min(md * 1.2, 1.0) * slow;
@@ -1274,6 +1352,9 @@ function update(dt) {
   P.cd -= dt; P.flash -= dt; P.kick = Math.max(0, P.kick - dt*7); P.hurtT -= dt; P.hitT -= dt;
   P.swapT = Math.max(0, P.swapT - dt); P.knifeT = Math.max(0, P.knifeT - dt); P.throwT = Math.max(0, P.throwT - dt);
   P.shakeT -= dt; P.noteT -= dt;
+  if (P.stealthT > 0) { P.stealthT -= dt; if (P.stealthT <= 0) { P.stealthT = 0; P.stealthCd = Math.max(2, 5 - pLv()); } }
+  else if (P.stealthCd > 0) P.stealthCd = Math.max(0, P.stealthCd - dt);
+  updateKunais(dt);
   if (L.regen || D.regen) P.hp = Math.min(stat.maxHp(), P.hp + ((L.regen || 0) + D.regen) * dt);
   if (P.reloadT > 0 && isGun(cur)) { P.reloadT -= dt;
     if (P.reloadT <= 0) { P.reloadT = 0; const a = ammo[cur], take = Math.min(magSize(gunDef(cur)) - a.mag, a.res); a.mag += take; a.res -= take; sfx.reloaded(); } }
@@ -1297,7 +1378,8 @@ function update(dt) {
     if (e.burnT > 0) { e.burnT -= dt; e.hp -= e.burnDps * dt; if (e.hp <= 0) { kill(e); continue; } } else e.burnDps = 0;
     if (e.frozenT > 0) { e.frozenT -= dt; continue; }
     if (e.type === "flyer") { updateFlyer(e, dt, slow); continue; }
-    const T = pickTarget(e), fl = flowFor(T);
+    const T = pickTarget(e); if (!T) continue;
+    const fl = flowFor(T);
     const dx = T.x - e.x, dy = T.y - e.y, d = Math.hypot(dx, dy) || .01, see = los(e.x, e.y, T.x, T.y);
     let mx = 0, my = 0;
     if (see) { mx = dx/d; my = dy/d; }
@@ -1508,15 +1590,16 @@ function updateWbar(force) {
   SLOTS.forEach((s, i) => {
     const w = wbtn[s]; if (!w) return;
     let sub;
-    if (s === "primary") sub = `${ammo.primary.mag}/${ammo.primary.res}`;
+    if (s === "primary") sub = isNinja() ? "∞" : `${ammo.primary.mag}/${ammo.primary.res}`;
+    else if (s === "pistol" && isNinja()) sub = "사용 불가";
     else if (s === "pistol") sub = `${ammo.pistol.mag}/∞`;
     else if (s === "knife") sub = "근접";
     else sub = `×${counts[s]}`;
     if (!isTouch) sub = `${i+1} · ${sub}`;
-    const key = slotName(s) + "|" + sub + "|" + (cur === s) + "|" + (isThrow(s) && counts[s] <= 0);
+    const key = slotName(s) + "|" + isNinja() + "|" + sub + "|" + (cur === s) + "|" + (isThrow(s) && counts[s] <= 0);
     if (!force && key === w.cache) return; w.cache = key;
     w.n.textContent = slotName(s); w.sm.textContent = sub;
-    w.b.classList.toggle("on", cur === s); w.b.classList.toggle("empty", isThrow(s) && counts[s] <= 0);
+    w.b.classList.toggle("on", cur === s); w.b.classList.toggle("empty", (isThrow(s) && counts[s] <= 0) || (s === "pistol" && isNinja()));
   });
 }
 
@@ -1568,6 +1651,7 @@ function render() {
   }
   for (const s of shots) list.push({ x: s.x, y: s.y, tex: s.acid ? SPR.acid : SPR.fireball, sc: .3, lift: s.z - .15 });
   for (const it of items) list.push({ x: it.x, y: it.y, tex: SPR[it.type], sc: .38, lift: .02 + Math.abs(Math.sin(it.t*3))*.04 });
+  for (const k of kunais) list.push({ x: k.x, y: k.y, tex: SPR.kunai, sc: .2, lift: k.z - .1 });
   for (const t of throws) list.push({ x: t.x, y: t.y, tex: SPR[t.kind], sc: t.kind === "grenade" ? .17 : .22, lift: t.z });
   const now = performance.now() / 1000;
   for (const f of fires) {
@@ -1578,15 +1662,15 @@ function render() {
     list.push({ x: b.x, y: b.y, tex: SPR.boom, sc, lift: .35 - sc/2 }); }
   if (state === "play" || state === "pause" || state === "perk" || state === "over" || state === "wait") { passiveSprites(list); ultSprites(list); }
   if (tp) {
-    const kind = cur === "primary" ? P.gun : cur, moving = state === "play" && Math.abs(Math.sin(P.bob)) > .01;
+    const kind = spriteKind(), moving = state === "play" && Math.abs(Math.sin(P.bob)) > .01;
     const key = kind + (moving && Math.sin(P.bob) > 0 ? 1 : 0) + (P.hurtT > .25 ? "H" : "");
-    list.push({ x: P.x, y: P.y, tex: SPR.me[key], sc: .62, lift: (P.knifeT > 0 ? .02 : 0) + (P.eye - .5) });
+    list.push({ x: P.x, y: P.y, tex: SPR.me[key], sc: .62, lift: (P.knifeT > 0 ? .02 : 0) + (P.eye - .5), alpha: P.stealthT > 0 ? .35 : 0 });
     if (P.flash > 0 && isGun(cur)) list.push({ x: P.x + dirX*.55 - dirY*.12, y: P.y + dirY*.55 + dirX*.12, tex: SPR.fireball, sc: .22, lift: .38 });
   }
   const mateList = NET.on && (state === "play" || state === "pause" || state === "over") ? mates() : [];
   for (const mate of mateList) {
     const k = KINDS[mate.k] || "rifle", fr = mate.mv && Math.sin(performance.now() / 110) > 0 ? 1 : 0;
-    list.push({ x: mate.x, y: mate.y, tex: SPR.me[k + fr + (mate.down ? "H" : "")], sc: mate.down ? .4 : .62, lift: mate.down ? 0 : Math.max(0, (mate.eye || .5) - .5) });
+    list.push({ x: mate.x, y: mate.y, tex: SPR.me[k + fr + (mate.down ? "H" : "")], sc: mate.down ? .4 : .62, lift: mate.down ? 0 : Math.max(0, (mate.eye || .5) - .5), alpha: mate.st ? .3 : 0 });
     if (mate.f && !mate.down) list.push({ x: mate.x + Math.cos(mate.a) * .5, y: mate.y + Math.sin(mate.a) * .5, tex: SPR.fireball, sc: .2, lift: .38 });
   }
   const inv = 1 / (plX*dirY - dirX*plY);
@@ -1597,10 +1681,12 @@ function render() {
     const scrX = (W/2)*(1 + s.tx/s.ty), unit = proj/s.ty, h = s.sc*unit, w = h;
     const bottom = hz + unit*P.eye - s.lift*unit, top = bottom - h, left = scrX - w/2;
     const x0 = Math.max(0, Math.floor(left)), x1 = Math.min(W - 1, Math.floor(left + w));
+    if (s.alpha) ctx.globalAlpha = s.alpha;
     for (let x = x0; x <= x1; x++) {
       if (s.ty >= zBuf[x]) continue;
       ctx.drawImage(s.tex, Math.min(63, ((x - left)/w*64) | 0), 0, 1, 64, x, top, 1, h);
     }
+    if (s.alpha) ctx.globalAlpha = 1;
   }
   if (ULT.lasers.length || beams.length) {
     const proj3 = (x, y, z) => { const sx = x - ox, sy = y - oy, tx = inv*(dirY*sx - dirX*sy), ty = inv*(-plY*sx + plX*sy);
@@ -1637,6 +1723,29 @@ function counter(y, color) {
 }
 function hand(x, y, rx, ry) { ctx.fillStyle = GLOVE; ell(ctx, x, y, rx, ry); ctx.fillStyle = GLOVE_HI; ell(ctx, x - rx*.3, y - ry*.35, rx*.45, ry*.3); }
 const VIEW = {
+  kunai() {
+    const p = P.knifeT > 0 ? 1 - P.knifeT / .16 : 0, a = Math.sin(p * Math.PI);
+    ctx.translate(-a * 30, -a * 60); ctx.rotate(-.25 + a * .3);
+    hand(0, -14, 30, 24);
+    if (P.cd < .2 || p > .7) {
+      ctx.strokeStyle = "#2a2f38"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -36, 9, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "#3a2a4a"; ctx.fillRect(-5, -76, 10, 34);
+      ctx.fillStyle = "#4e3a62"; for (let y = -72; y < -44; y += 7) ctx.fillRect(-5, y, 10, 3);
+      ctx.fillStyle = "#b8c1cc"; poly(ctx, [[0, -150], [16, -100], [0, -76], [-16, -100]]);
+      ctx.fillStyle = "#eef2f6"; poly(ctx, [[0, -150], [0, -76], [-16, -100]]);
+    }
+  },
+  katana() {
+    const p = P.knifeT > 0 ? 1 - P.knifeT / .28 : 0, a = Math.sin(p * Math.PI);
+    ctx.translate(-a * 150, -a * 30); ctx.rotate(-.35 - a * 1.4);
+    hand(0, -8, 34, 26); hand(0, -52, 30, 22);
+    ctx.fillStyle = "#1b1b24"; ctx.fillRect(-7, -80, 14, 76);
+    ctx.fillStyle = "#c9a227"; for (let y = -74; y < -10; y += 12) { poly(ctx, [[-7, y], [7, y + 6], [-7, y + 12]]); }
+    ctx.fillStyle = "#c9a227"; ell(ctx, 0, -84, 16, 5);
+    const lg = ctx.createLinearGradient(-6, 0, 8, 0); lg.addColorStop(0, "#ffffff"); lg.addColorStop(1, "#9aa6b4");
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(-5, -88); ctx.quadraticCurveTo(-12, -170, 6, -250); ctx.lineTo(9, -236); ctx.quadraticCurveTo(4, -170, 6, -88); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(160,140,255,.55)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-3, -92); ctx.quadraticCurveTo(-9, -170, 6, -246); ctx.stroke();
+  },
   rifle() {
     muzzle(-158, 1);
     ctx.fillStyle = "#1a1e26"; ctx.fillRect(-4, -164, 8, 10);
@@ -1745,7 +1854,7 @@ function drawWeapon() {
   const bx = moving ? Math.sin(P.bob)*6 : 0, by = moving ? Math.abs(Math.cos(P.bob))*5 : 0;
   let rl = 0; if (P.reloadT > 0) rl = Math.sin((1 - P.reloadT / P.reloadMax) * Math.PI);
   const sw = P.swapT > 0 ? P.swapT / .22 : 0;
-  const kind = cur === "primary" ? P.gun : cur;
+  const kind = katanaOn() ? "katana" : isNinja() && cur === "primary" ? "kunai" : cur === "primary" ? P.gun : cur;
   ctx.save(); ctx.translate(W/2 + (bx + 60)*s, H + (P.kick*10 + by + rl*70 + sw*140)*s); ctx.scale(s, s); ctx.rotate(rl * .35);
   VIEW[kind]();
   ctx.restore();
@@ -1765,7 +1874,9 @@ function hud() {
   const mh = stat.maxHp();
   setText("hpNum", String(Math.ceil(P.hp)));
   setText("ammoLabel", slotName(cur));
-  if (isGun(cur)) { setText("magNum", String(ammo[cur].mag)); setText("resNum", "/ " + (cur === "pistol" ? "∞" : ammo[cur].res)); }
+  if (katanaOn()) { setText("ammoLabel", "카타나"); setText("magNum", "—"); setText("resNum", ""); }
+  else if (isNinja() && cur === "primary") { setText("magNum", "∞"); setText("resNum", ""); }
+  else if (isGun(cur)) { setText("magNum", String(ammo[cur].mag)); setText("resNum", "/ " + (cur === "pistol" ? "∞" : ammo[cur].res)); }
   else if (cur === "knife") { setText("magNum", "—"); setText("resNum", ""); }
   else { setText("magNum", String(counts[cur])); setText("resNum", "개"); }
   setText("waveNum", String(P.wave));
@@ -1778,6 +1889,8 @@ function hud() {
     const cs = coopStatusText();
     if (cs) st = cs;
     else if (P.noteT > 0) st = P.note;
+    else if (P.stealthT > 0 && !katanaOn()) st = `은신 중 ${Math.ceil(P.stealthT)}초 · 적이 나를 못 봐요`;
+    else if (katanaOn()) st = `각성 · 그림자 검무 ${Math.ceil(P.ultT)}초 · 은신 + 카타나`;
     else if (P.ultT > 0 && P.passive !== "blades") st = `각성 · ${P.form ? (P.form === "devil" ? "악마" : "천사") : PASSIVES[P.passive].ult} ${Math.ceil(P.ultT)}초` + (P.passive === "shield" ? " · 비행 중 무적" : "");
     else if (P.reloadT > 0) st = "장전 중…";
     else if (isGun(cur)) {
@@ -1789,6 +1902,11 @@ function hud() {
   const bossE = state === "play" || state === "pause" ? enemies.find(e => e.type === "boss" && e.dying <= 0) : null;
   $("bossBar").hidden = !bossE;
   if (bossE) { $("bossFill").style.width = Math.max(0, bossE.hp / bossE.maxHp * 100) + "%"; setText("bossName", bossE.hp < bossE.maxHp / 2 ? "보스 · 괴물 군주 (분노)" : "보스 · 괴물 군주"); }
+  const sb = $("skillBtn"); sb.hidden = !isNinja() || (state !== "play" && state !== "pause");
+  if (!sb.hidden) { const rdy = P.stealthT <= 0 && P.stealthCd <= 0;
+    sb.classList.toggle("ready", rdy); sb.classList.toggle("active", P.stealthT > 0);
+    setText("skillTxt", P.stealthT > 0 ? Math.ceil(P.stealthT) + "초" : P.stealthCd > 0 ? Math.ceil(P.stealthCd) + "초" : isTouch ? "누르기" : "C 키"); }
+  $("stealthTint").style.opacity = P.stealthT > 0 && state === "play" ? "1" : "0";
   const ub = $("ultBtn"), up = Math.floor(P.ult);
   ub.hidden = state !== "play" && state !== "pause";
   ub.style.setProperty("--uc", PASSIVES[P.passive].c); ub.style.setProperty("--up", P.ultT > 0 ? 100 : up / P.ultNeed * 100);
@@ -1942,7 +2060,7 @@ function hostStart() {
   NET.ready = false; for (const g of guests()) { g.ready = false; g.down = false; }
   startGame(); netSend({ t: "start", n: teamSize() });
 }
-function myKind() { return KINDS.indexOf(cur === "primary" ? P.gun : cur); }
+function myKind() { return KINDS.indexOf(spriteKind()); }
 
 /* Guest damage, slows, burns, freezes and saws are batched and sent to the host, which owns enemy health. */
 function applyFx(e, o) {
@@ -1962,9 +2080,10 @@ function applyFx(e, o) {
 }
 /* Enemies chase the nearest player who is still standing. */
 function pickTarget(e) {
-  let best = P.down ? null : P, bd = P.down ? Infinity : Math.hypot(P.x - e.x, P.y - e.y);
-  if (NET.on) for (const g of mates()) { if (g.down) continue; const d = Math.hypot(g.x - e.x, g.y - e.y); if (d < bd) { bd = d; best = g; } }
-  return best || P;
+  const hidden = P.down || P.stealthT > 0;
+  let best = hidden ? null : P, bd = hidden ? Infinity : Math.hypot(P.x - e.x, P.y - e.y);
+  if (NET.on) for (const g of mates()) { if (g.down || g.st) continue; const d = Math.hypot(g.x - e.x, g.y - e.y); if (d < bd) { bd = d; best = g; } }
+  return best;
 }
 function hurtTarget(T, d, sx, sy) { if (T === P) hurtPlayer(d, sx, sy); else sendTo(T.id, { t: "hurt", d, sx: r2(sx), sy: r2(sy) }); }
 const flows = {};
@@ -1994,8 +2113,8 @@ function coopOver() { netSend({ t: "over", sc: P.score, w: P.wave }); gameOver()
 
 function sendSnapshot() {
   const flags = e => (e.frozenT > 0 ? 1 : 0) | (e.burnT > 0 ? 2 : 0) | (e.slowT > 0 ? 4 : 0) | (e.flash > 0 ? 8 : 0);
-  const pl = [["h", r2(P.x), r2(P.y), r2(P.a), myKind(), P.flash > 0 ? 1 : 0, P.down ? 1 : 0, r2(P.eye)]];
-  for (const g of guests()) if (g.x !== undefined) pl.push([g.id, g.x, g.y, g.a, g.k, g.f, g.down ? 1 : 0, g.eye]);
+  const pl = [["h", r2(P.x), r2(P.y), r2(P.a), myKind(), P.flash > 0 ? 1 : 0, P.down ? 1 : 0, r2(P.eye), P.stealthT > 0 ? 1 : 0]];
+  for (const g of guests()) if (g.x !== undefined) pl.push([g.id, g.x, g.y, g.a, g.k, g.f, g.down ? 1 : 0, g.eye, g.st ? 1 : 0]);
   const rv = {}; for (const k in NET.rev) if (NET.rev[k] > 0) rv[k] = r2(NET.rev[k]);
   netSend({ t: "s", w: P.wave, sc: P.score, n: teamSize(), rv, pl, ts: timeStopT > 0 ? 1 : 0,
     e: enemies.map(e => [e.id, TYPES.indexOf(e.type), r2(e.x), r2(e.y), r2(e.z || 0), r2(e.hp), e.maxHp, flags(e), e.dying > 0 ? 1 : 0, e.saw ? r2(e.saw.t) : -9]),
@@ -2013,10 +2132,10 @@ function firePts(x, y, r) {
 function applySnapshot(m) {
   P.wave = m.w; P.score = m.sc; NET.rev = m.rv || {}; NET.lobbyN = m.n || NET.lobbyN; NET.ts = !!m.ts;
   const prev = new Map(NET.others.map(o => [o.id, o])), others = [];
-  for (const [id, x, y, a, k, f, down, eye] of m.pl) {
+  for (const [id, x, y, a, k, f, down, eye, st] of m.pl) {
     if (id === NET.myId) continue;
     const o = prev.get(id) || { id, x, y };
-    o.mv = Math.hypot(x - o.x, y - o.y) > .01; Object.assign(o, { x, y, a, k, f, down: !!down, eye });
+    o.mv = Math.hypot(x - o.x, y - o.y) > .01; Object.assign(o, { x, y, a, k, f, down: !!down, eye, st: !!st });
     others.push(o);
   }
   NET.others = others;
@@ -2064,7 +2183,7 @@ function onNet(m, from) {
     case "ready": if (g) { g.ready = true; checkAllReady(); } break;
     case "i": if (g) {
       g.mv = g.x !== undefined && Math.hypot(m.x - g.x, m.y - g.y) > .01;
-      Object.assign(g, { x: m.x, y: m.y, a: m.a, k: m.k, f: m.f, down: !!m.down, full: !!m.full, eye: m.eye, pa: m.pa, pl: m.pl });
+      Object.assign(g, { st: !!m.st, x: m.x, y: m.y, a: m.a, k: m.k, f: m.f, down: !!m.down, full: !!m.full, eye: m.eye, pa: m.pa, pl: m.pl });
       if (g.down) checkAllDown();
       break; }
     case "fx": if (g) for (const [id, dmg, slowT, burnT, burnDps, freeze, saw] of m.l) {
@@ -2088,7 +2207,7 @@ function netTick(dt) {
     for (const e of enemies) { if (e.tx === undefined) continue; const k = Math.min(1, dt * 12); e.x += (e.tx - e.x) * k; e.y += (e.ty - e.y) * k;
       if (e.dying > 0) e.dying = Math.max(.02, e.dying - dt); }
     if (NET.sendT <= 0) { NET.sendT = .05;
-      netSend({ t: "i", pa: P.passive, pl: pLv(), x: r2(P.x), y: r2(P.y), a: r2(P.a), k: myKind(), f: P.flash > 0 ? 1 : 0, down: P.down ? 1 : 0, full: P.hp >= stat.maxHp() ? 1 : 0, eye: r2(P.eye) }); }
+      netSend({ t: "i", st: P.stealthT > 0 ? 1 : 0, pa: P.passive, pl: pLv(), x: r2(P.x), y: r2(P.y), a: r2(P.a), k: myKind(), f: P.flash > 0 ? 1 : 0, down: P.down ? 1 : 0, full: P.hp >= stat.maxHp() ? 1 : 0, eye: r2(P.eye) }); }
     if (NET.qT <= 0) { NET.qT = .1; const ids = Object.keys(NET.q);
       if (ids.length) { netSend({ t: "fx", l: ids.map(id => { const q = NET.q[id]; return [+id, r2(q.dmg || 0), q.slowT || 0, q.burnT || 0, r2(q.burnDps || 0), q.freeze || 0, r2(q.saw || 0)]; }) }); NET.q = {}; } }
     return;
@@ -2185,6 +2304,7 @@ addEventListener("keydown", e => {
     if (e.code === "KeyG") { quickThrow("grenade"); return; }
     if (e.code === "KeyF") { quickThrow("molotov"); return; }
     if (e.code === "KeyX") { activateUlt(); return; }
+    if (e.code === "KeyC") { activateStealth(); return; }
   }
   if (e.code === "KeyV" && state !== "select" && state !== "perk" && state !== "passsel") { setView(!tp); return; }
   keys[e.code] = true;
@@ -2236,6 +2356,7 @@ function endTouch(e) {
 game.addEventListener("touchend", endTouch); game.addEventListener("touchcancel", endTouch);
 const fireBtn = $("fireBtn"), reloadBtn = $("reloadBtn");
 $("ultBtn").addEventListener("click", e => { e.stopPropagation(); initAudio(); activateUlt(); });
+$("skillBtn").addEventListener("click", e => { e.stopPropagation(); initAudio(); activateStealth(); });
 fireBtn.addEventListener("touchstart", e => { e.preventDefault(); e.stopPropagation(); initAudio(); fireHeld = true; fireBtn.classList.add("down"); }, { passive: false });
 const fireUp = e => { e.preventDefault(); fireHeld = false; fireBtn.classList.remove("down"); };
 fireBtn.addEventListener("touchend", fireUp); fireBtn.addEventListener("touchcancel", fireUp);
